@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "focused-frontend",
-    "slug": "focused-frontend",
+    "slug": "focused-startup",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -37,6 +37,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e850e404-efdd-4856-8e5a-ba812292ac1f"
+      }
+    },
+    "owner": "focused-startup"
   }
 }
