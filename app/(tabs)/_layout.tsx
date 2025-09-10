@@ -26,6 +26,14 @@ export default function TabLayout() {
           default: {},
         }),
       }}>
+      
+      <Tabs.Screen
+        name="journaling"
+        options={{
+          title: 'Journaling',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="pencil.circle" color={color} />,
+        }}
+      />
       <Tabs.Screen
         name="index"
         options={{
@@ -34,10 +42,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="goals"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Goals',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="star.circle" color={color} />,
         }}
       />
     </Tabs>
