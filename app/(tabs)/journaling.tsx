@@ -1,5 +1,4 @@
 import { Platform, StyleSheet, ScrollView, StatusBar } from 'react-native';
-import { Header } from '@/components/ui/Header';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -9,7 +8,6 @@ export default function JournalingScreen() {
   return (
    <SafeAreaProvider>
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Header />
       <ScrollView style={styles.scrollContainer}>
         <ThemedView>
           <ThemedText type="title">Explore</ThemedText>

@@ -1,8 +1,15 @@
 import React from "react";
 import Svg, { Defs, LinearGradient, Stop, Text } from "react-native-svg";
 
-const FocusedLogo = () => (
-  <Svg width={300} height={50} viewBox="0 0 300 50">
+export type FocusedLogoProps = {
+  width?: number;
+  height?: number;
+  x?: number;
+  y?: number;
+};
+
+const FocusedLogo = ({width = 300, height = 50, x = 30, y = 70}: FocusedLogoProps) => (
+  <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
     <Defs>
       <LinearGradient id="focusedGradient" x1="0%" y1="0%" x2="100%" y2="0%">
         <Stop offset="0%" stopColor="#4facfe" stopOpacity="1" />
@@ -10,8 +17,8 @@ const FocusedLogo = () => (
       </LinearGradient>
     </Defs>
     <Text
-      x="30%"
-      y="50%"
+      x={`${x}%`}
+      y={`${y}%`}
       textAnchor="middle"
       fontFamily="Quicksand"
       fontSize="32"
