@@ -4,6 +4,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
+import { SignOutButton } from '@/components/SignOutButton';
 
 export default function HomeScreen() {
   const { isHeaderVisible, handleScroll, scrollEventThrottle } = useScrollHeader();
@@ -19,7 +20,7 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
         >
           <ThemedView style={styles.content}>
-            
+            <SignOutButton />
           </ThemedView>
         </ScrollView>
       </SafeAreaView>

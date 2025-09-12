@@ -8,7 +8,7 @@ import { router } from 'expo-router';
 export default function WelcomeScreen() {
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace('/(landing)/login');
+      router.replace('/(auth)/sign-in');
     }, 2000);
 
     return () => clearTimeout(timer);

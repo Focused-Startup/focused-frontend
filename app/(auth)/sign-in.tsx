@@ -1,4 +1,5 @@
 import { Platform, StyleSheet, ScrollView, StatusBar, TextInput, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
+import { useSignIn } from '@clerk/clerk-expo';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
@@ -9,27 +10,54 @@ import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 
-export default function SignupScreen() {
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
+export default function LoginScreen() {
+  const { signIn, setActive, isLoaded } = useSignIn();
+  const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  const handleSignup = () => {
-    // Add signup logic here
-    router.replace('/(tabs)');
+  const handleLogin = async () => {
+    if (!isLoaded) return
+
+    // Start the sign-in process using the email and password provided
+    if (!emailAddress || !password) {
+      setError(true);
+      return;
+    }
+
+    try {
+      const signInAttempt = await signIn.create({
+        identifier: emailAddress,
+        password,
+      })
+
+      // If sign-in process is complete, set the created session as active
+      // and redirect the user
+      if (signInAttempt.status === 'complete') {
+        await setActive({ session: signInAttempt.createdSessionId })
+        router.replace('/(tabs)')
+      } else {
+        console.error(JSON.stringify(signInAttempt, null, 2))
+      }
+    } catch (err) {
+      setError(true);
+    }
   };
 
-  const handleLogin = () => {
-    router.back();
+  const handleSignUp = () => {
+    router.push('/(auth)/sign-up');
+  };
+
+  const handleForgotPassword = () => {
+    router.push('/(auth)/forgotPassword');
   };
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ThemedView style={{flex: 1}}>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardContainer}
@@ -40,79 +68,56 @@ export default function SignupScreen() {
             showsVerticalScrollIndicator={false}
           >
             <ThemedView style={styles.logoContainer}>
-              <FocusedLogo width={200} height={60} x={50} y={100} />
+              <FocusedLogo width={250} height={80} x={50} y={100} />
             </ThemedView>
 
             <ThemedView style={styles.formContainer}>
 
               <ThemedView style={styles.inputContainer}>
-                <ThemedView style={styles.nameRow}>
-                  <TextInput
-                    style={[styles.nameInput, { borderColor: colors.icon, color: colors.text }]}
-                    placeholder="First Name"
-                    placeholderTextColor={colors.icon}
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    autoCapitalize="words"
-                  />
-                  <TextInput
-                    style={[styles.nameInput, { borderColor: colors.icon, color: colors.text }]}
-                    placeholder="Last Name"
-                    placeholderTextColor={colors.icon}
-                    value={lastName}
-                    onChangeText={setLastName}
-                    autoCapitalize="words"
-                  />
-                </ThemedView>
-                
+                <ThemedText style={styles.errorText}>{error ? 'Email and password are missing or incorrect. Try again' : ''}</ThemedText>
                 <TextInput
                   style={[styles.input, { borderColor: colors.icon, color: colors.text }]}
                   placeholder="Email"
-                  placeholderTextColor={colors.icon}
-                  value={email}
-                  onChangeText={setEmail}
+                  value={emailAddress}
+                  onChangeText={setEmailAddress}
                   keyboardType="email-address"
                   autoCapitalize="none"
                 />
-                
                 <TextInput
                   style={[styles.input, { borderColor: colors.icon, color: colors.text }]}
                   placeholder="Password"
-                  placeholderTextColor={colors.icon}
                   value={password}
                   onChangeText={setPassword}
-                  secureTextEntry
-                />
-                
-                <TextInput
-                  style={[styles.input, { borderColor: colors.icon, color: colors.text }]}
-                  placeholder="Confirm Password"
-                  placeholderTextColor={colors.icon}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
                   secureTextEntry
                 />
               </ThemedView>
 
               <GradientButton
-                title="Create Account"
-                onPress={handleSignup}
-                style={styles.signupButton}
+                title="Sign In"
+                onPress={handleLogin}
+                style={styles.loginButton}
               />
 
-              <ThemedView style={styles.loginContainer}>
-                <ThemedText style={[styles.loginText, { color: colors.icon }]}>
-                  Already have an account?{' '}
+              <TouchableOpacity onPress={handleForgotPassword}>
+                <ThemedText style={[styles.forgotText, { color: colors.tint }]}>
+                  Forgot Password?
                 </ThemedText>
-                <TouchableOpacity onPress={handleLogin}>
-                  <ThemedText style={[styles.loginLink, { color: colors.tint }]}>
-                    Sign In
+              </TouchableOpacity>
+
+              <ThemedView style={styles.signupContainer}>
+                <ThemedText style={styles.signupText}>
+                  Don't have an account?{' '}
+                </ThemedText>
+                <TouchableOpacity onPress={handleSignUp}>
+                  <ThemedText style={[styles.signupLink, { color: colors.tint }]}>
+                    Sign Up
                   </ThemedText>
                 </TouchableOpacity>
               </ThemedView>
             </ThemedView>
           </ScrollView>
         </KeyboardAvoidingView>
+        </ThemedView>
       </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -137,7 +142,7 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 40,
   },
   formContainer: {
     width: '100%',
@@ -158,20 +163,6 @@ const styles = StyleSheet.create({
   inputContainer: {
     marginBottom: 24,
   },
-  nameRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  nameInput: {
-    flex: 1,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    backgroundColor: 'transparent',
-  },
   input: {
     borderWidth: 1.5,
     borderRadius: 12,
@@ -181,18 +172,29 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     backgroundColor: 'transparent',
   },
-  signupButton: {
+  loginButton: {
     marginBottom: 16,
   },
-  loginContainer: {
+  errorText: {
+    fontSize: 14,
+    color: 'red',
+    marginBottom: 8,
+  },
+  forgotText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+    fontWeight: '500',
+  },
+  signupContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  loginText: {
+  signupText: {
     fontSize: 16,
   },
-  loginLink: {
+  signupLink: {
     fontSize: 16,
     fontWeight: '600',
   },

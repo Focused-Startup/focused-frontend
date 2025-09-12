@@ -31,7 +31,8 @@ export default function ForgotPasswordScreen() {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ThemedView style={{flex: 1}}>
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardContainer}
@@ -48,15 +49,14 @@ export default function ForgotPasswordScreen() {
             <ThemedView style={styles.formContainer}>
               {!isEmailSent ? (
                 <>
-                  <ThemedText style={[styles.subtitle, { color: colors.icon }]}>
+                  <ThemedText style={styles.subtitle}>
                     No worries! Enter your email address and we'll send you a link to reset your password.
                   </ThemedText>
 
                   <ThemedView style={styles.inputContainer}>
                     <TextInput
-                      style={[styles.input, { borderColor: colors.icon, color: colors.text }]}
+                      style={styles.input}
                       placeholder="Enter your email"
-                      placeholderTextColor={colors.icon}
                       value={email}
                       onChangeText={setEmail}
                       keyboardType="email-address"
@@ -73,21 +73,21 @@ export default function ForgotPasswordScreen() {
                 </>
               ) : (
                 <>
-                  <ThemedText style={[styles.title, { color: colors.text }]}>
+                  <ThemedText style={styles.title}>
                     Check Your Email
                   </ThemedText>
-                  <ThemedText style={[styles.subtitle, { color: colors.icon }]}>
+                  <ThemedText style={styles.subtitle}>
                     We've sent a password reset link to:
                   </ThemedText>
-                  <ThemedText style={[styles.emailText, { color: colors.tint }]}>
+                  <ThemedText style={styles.emailText}>
                     {email}
                   </ThemedText>
-                  <ThemedText style={[styles.instructionText, { color: colors.icon }]}>
+                  <ThemedText style={styles.instructionText}>
                     Click the link in your email to reset your password. If you don't see the email, check your spam folder.
                   </ThemedText>
 
                   <TouchableOpacity onPress={handleResendEmail}>
-                    <ThemedText style={[styles.resendText, { color: colors.tint }]}>
+                    <ThemedText style={styles.resendText}>
                       Resend Email
                     </ThemedText>
                   </TouchableOpacity>
@@ -95,13 +95,14 @@ export default function ForgotPasswordScreen() {
               )}
 
               <TouchableOpacity onPress={handleBackToLogin} style={styles.backButton}>
-                <ThemedText style={[styles.backText, { color: colors.icon }]}>
+                <ThemedText style={[styles.backText, { color: colors.tint }]}>
                   ← Back to Sign In
                 </ThemedText>
               </TouchableOpacity>
             </ThemedView>
           </ScrollView>
         </KeyboardAvoidingView>
+      </ThemedView>
       </SafeAreaView>
     </SafeAreaProvider>
   );
