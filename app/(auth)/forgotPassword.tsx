@@ -4,30 +4,89 @@ import { ThemedView } from '@/components/ThemedView';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import FocusedLogo from '@/components/FocusedLogo';
 import { GradientButton } from '@/components/ui/GradientButton';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
+import { useAuth, useSignIn } from '@clerk/clerk-expo';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [isEmailSent, setIsEmailSent] = useState(false);
+  const [error, setError] = useState('');
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [secondFactor, setSecondFactor] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { isSignedIn } = useAuth();
+  const { isLoaded, signIn, setActive } = useSignIn();
 
-  const handleResetPassword = () => {
-    // Add password reset logic here
-    setIsEmailSent(true);
+  useEffect(() => {
+    if (isSignedIn) {
+      router.replace('/(tabs)');
+    }
+  }, [isSignedIn, router]);
+
+  if (!isLoaded) {
+    return null;
+  }
+
+  const handleSendEmail = async () => {
+    await signIn?.create({
+      strategy: 'reset_password_email_code',
+      identifier: email,
+    })
+    .then((_) => {
+      setIsEmailSent(true);
+      setError('');
+    })
+    .catch((_) => {
+      setError('Failed to send reset email. Please try again.');
+      setIsEmailSent(false);
+    });
   };
+
+  const handleResetPassword = async () => {
+    await signIn?.attemptFirstFactor({
+      strategy: 'reset_password_email_code',
+      code,
+      password,
+    })
+    .then((result) => {
+      if (result.status === 'needs_second_factor') {
+        setSecondFactor(true);
+        setError('');
+      } else if (result.status === 'complete') {
+        setActive({
+          session: result.createdSessionId,
+          navigate: async ({ session }) => {
+            if (session?.currentTask) {
+              console.log(session?.currentTask);
+              return;
+            }
+            router.replace('/(tabs)')
+          }
+        })
+
+      } else {
+
+      }
+    })
+    .catch((_) => {
+      setError('Failed to reset password. Please check the code and try again.');
+    })
+  }
+
+  const handleResendEmail = () => {
+    handleSendEmail();
+  }
 
   const handleBackToLogin = () => {
     router.back();
   };
 
-  const handleResendEmail = () => {
-    // Add resend logic here
-    console.log('Resending email...');
-  };
 
   return (
     <SafeAreaProvider>
@@ -49,7 +108,7 @@ export default function ForgotPasswordScreen() {
             <ThemedView style={styles.formContainer}>
               {!isEmailSent ? (
                 <>
-                  <ThemedText style={styles.subtitle}>
+                  <ThemedText style={[styles.subtitle, { marginBottom: 16 }]}>
                     No worries! Enter your email address and we'll send you a link to reset your password.
                   </ThemedText>
 
@@ -66,26 +125,71 @@ export default function ForgotPasswordScreen() {
 
                   <GradientButton
                     title="Send Reset Link"
-                    onPress={handleResetPassword}
+                    onPress={handleSendEmail}
                     style={styles.resetButton}
                     disabled={!email.trim()}
                   />
                 </>
               ) : (
                 <>
-                  <ThemedText style={styles.title}>
-                    Check Your Email
-                  </ThemedText>
                   <ThemedText style={styles.subtitle}>
                     We've sent a password reset link to:
                   </ThemedText>
                   <ThemedText style={styles.emailText}>
                     {email}
                   </ThemedText>
-                  <ThemedText style={styles.instructionText}>
-                    Click the link in your email to reset your password. If you don't see the email, check your spam folder.
-                  </ThemedText>
-
+                  {!!error && (
+                    <ThemedText style={styles.errorText}>
+                      {error}
+                    </ThemedText>
+                  )}
+                  <ThemedView style={styles.inputContainer}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter reset code"
+                      value={code}
+                      onChangeText={setCode}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="default"
+                      returnKeyType="done"
+                    />
+                  </ThemedView>
+                  <ThemedView style={styles.inputContainer}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter new password"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      returnKeyType="done"
+                    />
+                  </ThemedView>
+                  <ThemedView style={styles.inputContainer}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      returnKeyType="done"
+                    />
+                  </ThemedView>
+                  <GradientButton
+                    title="Reset Password"
+                    onPress={handleResetPassword}
+                    style={styles.resetButton}
+                    disabled={
+                      !code.trim() ||
+                      !password.trim() ||
+                      !confirmPassword.trim() ||
+                      password !== confirmPassword
+                    }
+                  />
                   <TouchableOpacity onPress={handleResendEmail}>
                     <ThemedText style={styles.resendText}>
                       Resend Email
@@ -143,7 +247,6 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
-    marginBottom: 32,
     lineHeight: 24,
   },
   inputContainer: {
@@ -151,7 +254,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
@@ -184,5 +287,11 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  errorText: {
+    fontSize: 14,
+    color: 'red',
+    textAlign: 'center',
+    marginBottom: 16,
   },
 });

@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
   gradient: {
     paddingVertical: 16,
     paddingHorizontal: 24,
-    borderRadius: 12,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#4facfe', // Fallback to single color
