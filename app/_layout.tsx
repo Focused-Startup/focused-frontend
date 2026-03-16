@@ -2,8 +2,6 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ClerkProvider } from '@clerk/clerk-expo';
-import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Suspense, useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
@@ -30,7 +28,6 @@ export default function RootLayout() {
   });
   const expoDb = openDatabaseSync(DATABASE_NAME);
   const db = drizzle(expoDb);
-  console.log('Migrations object:', JSON.stringify(migrations, null, 2));
   const { success, error } = useMigrations(db, migrations);
 
   useEffect(() => {
@@ -52,21 +49,18 @@ export default function RootLayout() {
   }
 
   return (
-    <ClerkProvider tokenCache={tokenCache}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : LightTheme}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <Suspense fallback={<ActivityIndicator size="large" />}>
-            <SQLiteProvider databaseName={'app.db'} options={{ enableChangeListener: true }} useSuspense>
-              <Stack>
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="+not-found" />
-              </Stack>
-            <StatusBar style="auto" />
-          </SQLiteProvider>
-          </Suspense>
-        </GestureHandlerRootView>
-      </ThemeProvider>
-    </ClerkProvider>
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : LightTheme}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Suspense fallback={<ActivityIndicator size="large" />}>
+          <SQLiteProvider databaseName={'app.db'} options={{ enableChangeListener: true }} useSuspense>
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="+not-found" />
+            </Stack>
+          <StatusBar style="auto" />
+        </SQLiteProvider>
+        </Suspense>
+      </GestureHandlerRootView>
+    </ThemeProvider>
   );
 }

@@ -85,7 +85,9 @@ export default function JournalingScreen() {
           scrollEventThrottle={scrollEventThrottle}
           showsVerticalScrollIndicator={false}
         >
+          
           <ThemedView style={styles.content}>
+            <ThemedText style={styles.introText}>Writing down your feelings is a great way to reflect and process your thoughts.</ThemedText>
             {entries.length === 0 ? (
               <ThemedView style={styles.emptyState}>
                 <ThemedText style={styles.emptyStateText}>No journal entries yet. Start writing!</ThemedText>
@@ -149,6 +151,11 @@ export default function JournalingScreen() {
 }
 
 const styles = StyleSheet.create({
+  introText: {
+    fontSize: 16,
+    color: '#95a5a6',
+    marginBottom: 20,
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',

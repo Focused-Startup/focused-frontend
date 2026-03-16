@@ -1,50 +1,96 @@
-# Welcome to your Expo app 👋
+# Focused
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Focused is a mental health and self-reflection app built with Expo and React Native. The app is designed to give users a simple place to capture thoughts, track personal goals, and build a journaling habit in one focused experience.
 
-## Get started
+## What the app does
 
-1. Install dependencies
+- Save quick notes from the home screen for thoughts, reminders, or reflections.
+- Set and manage personal wellness goals.
+- Write and revisit journal entries.
+- Use a clean mobile-first interface with local persistence.
 
-   ```bash
-   npm install
-   ```
+## Core features
 
-2. Start the app
+### Notes
 
-   ```bash
-   npx expo start
-   ```
+The home screen lets users write short notes, save them instantly, and review them later. Notes are stored locally in SQLite and can be removed with swipe actions.
 
-In the output, you'll find options to open the app in a
+### Goals
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+Users can add wellness-oriented goals from a suggested list and keep track of active goals throughout the day.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Journal entries
 
-## Get a fresh project
+The journaling section supports creating and editing longer-form reflections so users can build a consistent mental health routine.
 
-When you're ready, run:
+## Tech stack
 
-```bash
-npm run reset-project
+- Expo
+- React Native
+- Expo Router
+- TypeScript
+- SQLite via Expo SQLite
+- Drizzle ORM for local data access and migrations
+
+## Project structure
+
+```text
+app/
+  (tabs)/        Main app tabs: Home, Journal, Goals
+components/      Shared UI components
+constants/       Theme values and quotes
+db/              Database schema
+drizzle/         SQLite migrations
+hooks/           Shared hooks
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Running the app locally
 
-## Learn more
+1. Install dependencies:
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm install
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+2. Start the Expo development server:
 
-## Join the community
+```bash
+npm run start
+```
 
-Join our community of developers creating universal apps.
+3. Open the app in one of the supported targets:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- Android emulator
+- iOS simulator
+- Expo Go
+- Web browser
+
+You can also run platform-specific commands:
+
+```bash
+npm run android
+npm run ios
+npm run web
+```
+
+## Available scripts
+
+- `npm run start` starts the Expo development server.
+- `npm run android` opens the app on Android.
+- `npm run ios` opens the app on iOS.
+- `npm run web` runs the app in the browser.
+- `npm run lint` runs the Expo lint configuration.
+
+## Data model
+
+Focused currently stores three main types of local data:
+
+- Notes
+- Goals
+- Journal entries
+
+These are defined with Drizzle schema files and persisted in a local SQLite database.
+
+## Vision
+
+Focused is meant to feel lightweight, calming, and practical. Instead of trying to be an all-in-one wellness platform, it centers on a few useful habits: capturing thoughts, setting intentions, and reflecting consistently.

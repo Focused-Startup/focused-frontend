@@ -4,7 +4,6 @@ import { Platform, StatusBar, StyleSheet, Animated, TouchableOpacity, Modal, Vie
 import FocusedLogo from '@/components/FocusedLogo';
 import { useRef, useEffect, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { SignOutButton } from '../SignOutButton';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 
@@ -19,7 +18,8 @@ export function Header({ isVisible = true, title, headerRight }: HeaderProps) {
     const opacity = useRef(new Animated.Value(1)).current;
     const [modalVisible, setModalVisible] = useState(false);
     const colorScheme = useColorScheme();
-    const iconColor = Colors[colorScheme ?? 'light'].text;
+    const theme = colorScheme === 'dark' ? 'dark' : 'light';
+    const iconColor = Colors[theme].text;
 
     useEffect(() => {
         Animated.parallel([
@@ -73,9 +73,6 @@ export function Header({ isVisible = true, title, headerRight }: HeaderProps) {
                 >
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Account</Text>
-                        <View style={styles.modalItem}>
-                            <SignOutButton onSignOut={() => setModalVisible(false)} />
-                        </View>
                         <TouchableOpacity 
                             style={styles.closeButton} 
                             onPress={() => setModalVisible(false)}
