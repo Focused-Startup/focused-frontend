@@ -53,35 +53,9 @@ export function Header({ isVisible = true, title, headerRight }: HeaderProps) {
                     )}
                     <View style={styles.rightContainer}>
                         {headerRight}
-                        <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.iconContainer}>
-                            <Ionicons name="person-circle-outline" size={32} color={iconColor} />
-                        </TouchableOpacity>
                     </View>
                 </ThemedView>
             </Animated.View>
-
-            <Modal
-                animationType="fade"
-                transparent={true}
-                visible={modalVisible}
-                onRequestClose={() => setModalVisible(false)}
-            >
-                <TouchableOpacity 
-                    style={styles.modalOverlay} 
-                    activeOpacity={1} 
-                    onPress={() => setModalVisible(false)}
-                >
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Account</Text>
-                        <TouchableOpacity 
-                            style={styles.closeButton} 
-                            onPress={() => setModalVisible(false)}
-                        >
-                            <Text style={styles.closeButtonText}>Cancel</Text>
-                        </TouchableOpacity>
-                    </View>
-                </TouchableOpacity>
-            </Modal>
         </>
     );
 }

@@ -9,7 +9,9 @@ import { drizzle } from 'drizzle-orm/expo-sqlite';
 import * as schema from '@/db/schema';
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import Swipeable from '@/components/ui/CompatSwipeable';
 import { eq } from 'drizzle-orm';
+import GoalsModal from '@/components/ui/GoalsModal';
 
 const SUGGESTED_GOALS = [
   "Drink 8 glasses of water",
@@ -29,6 +31,8 @@ export default function GoalsScreen() {
   const db = useSQLiteContext();
   const drizzleDb = useMemo(() => drizzle(db, { schema }), [db]);
   const [activeGoals, setActiveGoals] = useState<schema.Goal[]>([]);
+  const [completedGoalIds, setCompletedGoalIds] = useState<number[]>([]);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const fetchGoals = useCallback(async () => {
     try {
@@ -62,16 +66,49 @@ export default function GoalsScreen() {
   const removeGoal = async (id: number) => {
     try {
       await drizzleDb.delete(schema.goals).where(eq(schema.goals.id, id));
+      setCompletedGoalIds((previousIds) => previousIds.filter((goalId) => goalId !== id));
       fetchGoals();
     } catch (e) {
       console.error('Error removing goal:', e);
     }
   };
 
+  const toggleGoalComplete = (id: number) => {
+    setCompletedGoalIds((previousIds) => {
+      if (previousIds.includes(id)) {
+        return previousIds.filter((goalId) => goalId !== id);
+      }
+
+      return [...previousIds, id];
+    });
+  };
+
+  const renderRightActions = (id: number) => {
+    return (
+      <TouchableOpacity style={styles.deleteButton} onPress={() => removeGoal(id)}>
+        <Ionicons name="trash-outline" size={24} color="white" />
+      </TouchableOpacity>
+    );
+  };
+
+  const openGoalsModal = () => {
+    setIsModalVisible(true);
+  };
+
+  const saveCustomGoal = async (goalContent: string) => {
+    await addGoal(goalContent);
+  };
+
+  const renderHeaderRight = (
+    <TouchableOpacity onPress={openGoalsModal} activeOpacity={0.8}>
+      <Ionicons name="add-outline" size={36} color="#007AFF" />
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top']}>
-        <Header isVisible={isHeaderVisible} title="Goals" />
+        <Header isVisible={isHeaderVisible} title="Goals" headerRight={renderHeaderRight} />
         <ScrollView 
           style={styles.scrollContainer}
           onScroll={handleScroll}
@@ -87,12 +124,18 @@ export default function GoalsScreen() {
                 <ThemedText style={styles.emptyText}>No active goals. Pick one below!</ThemedText>
               ) : (
                 activeGoals.map((goal) => (
-                  <TouchableOpacity key={goal.id} onPress={() => removeGoal(goal.id)}>
-                    <ThemedView style={styles.goalCard}>
-                      <Ionicons name="checkbox" size={24} color="#4CAF50" />
-                      <ThemedText style={styles.goalText}>{goal.content}</ThemedText>
-                    </ThemedView>
-                  </TouchableOpacity>
+                  <Swipeable key={goal.id} renderRightActions={() => renderRightActions(goal.id)}>
+                    <TouchableOpacity onPress={() => toggleGoalComplete(goal.id)} activeOpacity={0.8}>
+                      <ThemedView style={styles.goalCard}>
+                        <Ionicons
+                          name={completedGoalIds.includes(goal.id) ? 'checkmark-circle' : 'ellipse-outline'}
+                          size={24}
+                          color={completedGoalIds.includes(goal.id) ? '#4CAF50' : '#b0b7c3'}
+                        />
+                        <ThemedText style={styles.goalText}>{goal.content}</ThemedText>
+                      </ThemedView>
+                    </TouchableOpacity>
+                  </Swipeable>
                 ))
               )}
             </ThemedView>
@@ -118,7 +161,13 @@ export default function GoalsScreen() {
                 })}
               </ThemedView>
             </ThemedView>
-
+          {isModalVisible && (
+            <GoalsModal
+              isVisible={isModalVisible}
+              onClose={() => setIsModalVisible(false)}
+              onSave={saveCustomGoal}
+            />
+          )}
           </ThemedView>
         </ScrollView>
       </SafeAreaView>
@@ -136,7 +185,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 120,
+    paddingTop: 80,
     paddingBottom: 100,
   },
   section: {
@@ -188,5 +237,13 @@ const styles = StyleSheet.create({
   suggestionText: {
     fontSize: 14,
     color: '#333',
+  },
+  deleteButton: {
+    backgroundColor: '#ff3b30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    marginBottom: 12,
+    borderRadius: 16,
   },
 });

@@ -10,6 +10,7 @@ import * as schema from '@/db/schema';
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { desc, eq } from 'drizzle-orm';
+import Swipeable from '@/components/ui/CompatSwipeable';
 
 export default function JournalingScreen() {
   const { isHeaderVisible, handleScroll, scrollEventThrottle } = useScrollHeader();
@@ -69,6 +70,23 @@ export default function JournalingScreen() {
     setIsModalVisible(true);
   };
 
+  const deleteEntry = async (id: number) => {
+    try {
+      await drizzleDb.delete(schema.journalEntries).where(eq(schema.journalEntries.id, id));
+      fetchEntries();
+    } catch (e) {
+      console.error('Error deleting journal entry:', e);
+    }
+  };
+
+  const renderRightActions = (id: number) => {
+    return (
+      <TouchableOpacity style={styles.deleteButton} onPress={() => deleteEntry(id)}>
+        <Ionicons name="trash-outline" size={24} color="white" />
+      </TouchableOpacity>
+    );
+  };
+
   const renderHeaderRight = (
     <TouchableOpacity onPress={openNewEntryModal}>
       <Ionicons name="create-outline" size={28} color="#007AFF" />
@@ -94,21 +112,23 @@ export default function JournalingScreen() {
               </ThemedView>
             ) : (
               entries.map((entry) => (
-                <TouchableOpacity key={entry.id} onPress={() => openEditModal(entry)}>
-                  <ThemedView style={styles.entryCard}>
-                    <ThemedText style={styles.entryDate}>
-                      {new Date(entry.createdAt).toLocaleDateString(undefined, { 
-                        weekday: 'short', 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </ThemedText>
-                    <ThemedText style={styles.entryContent} numberOfLines={3}>{entry.content}</ThemedText>
-                  </ThemedView>
-                </TouchableOpacity>
+                <Swipeable key={entry.id} renderRightActions={() => renderRightActions(entry.id)}>
+                  <TouchableOpacity onPress={() => openEditModal(entry)} activeOpacity={0.8}>
+                    <ThemedView style={styles.entryCard}>
+                      <ThemedText style={styles.entryDate}>
+                        {new Date(entry.createdAt).toLocaleDateString(undefined, {
+                          weekday: 'short',
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </ThemedText>
+                      <ThemedText style={styles.entryContent} numberOfLines={3}>{entry.content}</ThemedText>
+                    </ThemedView>
+                  </TouchableOpacity>
+                </Swipeable>
               ))
             )}
           </ThemedView>
@@ -197,6 +217,14 @@ const styles = StyleSheet.create({
   entryContent: {
     fontSize: 16,
     lineHeight: 24,
+  },
+  deleteButton: {
+    backgroundColor: '#ff3b30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    marginBottom: 16,
+    borderRadius: 16,
   },
   modalContainer: {
     flex: 1,

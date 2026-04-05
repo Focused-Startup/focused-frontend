@@ -11,8 +11,7 @@ import { drizzle } from 'drizzle-orm/expo-sqlite';
 import * as schema from '@/db/schema';
 import { useMemo, useEffect, useState, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-
-import { Swipeable } from 'react-native-gesture-handler';
+import Swipeable from '@/components/ui/CompatSwipeable';
 import { eq } from 'drizzle-orm';
 
 export default function HomeScreen() {
