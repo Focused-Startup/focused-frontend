@@ -15,6 +15,13 @@
       "when": 1763855903052,
       "tag": "0001_broad_saracen",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1775529600000,
+      "tag": "0002_drawings_table",
+      "breakpoints": true
     }
   ]
 }

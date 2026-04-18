@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, blob } from 'drizzle-orm/sqlite-core';
 
 export const notes = sqliteTable('notes', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -19,7 +19,15 @@ export const goals = sqliteTable('goals', {
   createdAt: integer('created_at').notNull(),
 });
 
+export const drawings = sqliteTable('drawings', {
+  id: integer('id').primaryKey(),
+  name: text('name'),
+  drawingJson: text('drawing_json'),
+  previewImage: blob('preview_image'),
+});
+
 // Export types
 export type Note = typeof notes.$inferSelect;
 export type JournalEntry = typeof journalEntries.$inferSelect;
 export type Goal = typeof goals.$inferSelect;
+export type Drawing = typeof drawings.$inferSelect;

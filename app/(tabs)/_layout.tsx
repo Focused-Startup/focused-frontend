@@ -48,6 +48,19 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="star.circle" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="draw/index"
+        options={{
+          title: 'Draw',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="pencil.and.scribble" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="draw/edit"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
