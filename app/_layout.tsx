@@ -1,6 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Suspense, useEffect } from 'react';
@@ -10,6 +10,10 @@ import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import migrations from '@/drizzle/migrations';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ClerkProvider, useAuth } from '@clerk/expo';
+import { tokenCache } from '@clerk/expo/token-cache';
+
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!
 
 const LightTheme = {
   ...DefaultTheme,
@@ -20,6 +24,42 @@ const LightTheme = {
 }
 
 export const DATABASE_NAME = 'app.db';
+
+function AppNavigation() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const segments = useSegments() as string[];
+  const router = useRouter();
+  const isAuthRoute = segments[0] === '(auth)';
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (!isSignedIn && !isAuthRoute) {
+      router.replace('./(auth)/loading');
+      return;
+    }
+
+    if (isSignedIn && isAuthRoute) {
+      router.replace('/(tabs)');
+    }
+  }, [isLoaded, isSignedIn, isAuthRoute, router]);
+
+  if (!isLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  return (
+    <Stack>
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="+not-found" />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme() ?? "light";
@@ -40,6 +80,10 @@ export default function RootLayout() {
     console.error('Migration error:', error);
   }, [error]);
 
+  if (!publishableKey) {
+    throw new Error('Add your Clerk Publishable Key to the .env file');
+  }
+
   if (!loaded || !success) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -49,18 +93,18 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : LightTheme}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <Suspense fallback={<ActivityIndicator size="large" />}>
-          <SQLiteProvider databaseName={'app.db'} options={{ enableChangeListener: true }} useSuspense>
-            <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="+not-found" />
-            </Stack>
-          <StatusBar style="auto" />
-        </SQLiteProvider>
-        </Suspense>
-      </GestureHandlerRootView>
-    </ThemeProvider>
+    // Clerk Expo setup guide: https://clerk.com/docs/quickstarts/expo
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : LightTheme}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <Suspense fallback={<ActivityIndicator size="large" />}>
+            <SQLiteProvider databaseName={'app.db'} options={{ enableChangeListener: true }} useSuspense>
+              <AppNavigation />
+              <StatusBar style="auto" />
+            </SQLiteProvider>
+          </Suspense>
+        </GestureHandlerRootView>
+      </ThemeProvider>
+    </ClerkProvider>
   );
 }
