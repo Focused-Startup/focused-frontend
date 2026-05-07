@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useSignUp } from '@clerk/expo';
@@ -11,15 +11,25 @@ import { GradientButton } from '@/components/ui/GradientButton';
 export default function SignUpScreen() {
   const { fetchStatus, signUp } = useSignUp();
 
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
 
   const disabled = useMemo(() => {
-    return !email.trim() || !password.trim() || isSubmitting || fetchStatus === 'fetching';
-  }, [email, password, isSubmitting, fetchStatus]);
+    return (
+      !username.trim() ||
+      !email.trim() ||
+      !password.trim() ||
+      !confirmPassword.trim() ||
+      password !== confirmPassword ||
+      isSubmitting ||
+      fetchStatus === 'fetching'
+    );
+  }, [username, email, password, confirmPassword, isSubmitting, fetchStatus]);
 
   const onSignUpPress = async () => {
     if (disabled) return;
@@ -30,6 +40,7 @@ export default function SignUpScreen() {
 
     try {
       const { error: createError } = await signUp.create({
+        username: username.trim(),
         emailAddress: email.trim(),
         password,
       });
@@ -61,11 +72,26 @@ export default function SignUpScreen() {
     }
   };
 
+  useEffect(() => {
+    if (password && confirmPassword && password !== confirmPassword) {
+      setErrorMessage('Passwords do not match.');
+    } else {      
+      setErrorMessage('');
+    }
+  }, [password, confirmPassword]);
+
   return (
     <AuthScreenShell
       title="Create your account"
-      subtitle="Use your email and password to get started."
-    >
+      subtitle="Use your details, email, and password to get started."
+    > 
+      <ThemedTextInput
+        placeholder="Username"
+        autoCapitalize="none"
+        autoCorrect={false}
+        value={username}
+        onChangeText={setUsername}
+      />
       <ThemedTextInput
         placeholder="Email"
         keyboardType="email-address"
@@ -79,6 +105,12 @@ export default function SignUpScreen() {
         secureTextEntry
         value={password}
         onChangeText={setPassword}
+      />
+      <ThemedTextInput
+        placeholder="Confirm Password"
+        secureTextEntry
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
       />
 
       {!!errorMessage && <ThemedText style={styles.errorText}>{errorMessage}</ThemedText>}

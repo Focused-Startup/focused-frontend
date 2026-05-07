@@ -57,8 +57,7 @@ export default function LoginScreen() {
 
   return (
     <AuthScreenShell
-      title="Welcome back"
-      subtitle="Sign in with your email and password to continue."
+      title="Focused"
     >
       <ThemedTextInput
         placeholder="Email"
@@ -110,7 +109,7 @@ const styles = StyleSheet.create({
   },
   linksRow: {
     marginTop: 16,
-    alignItems: 'flex-end',
+    alignItems: 'center',
   },
   footerRow: {
     marginTop: 20,

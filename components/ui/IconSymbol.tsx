@@ -20,7 +20,8 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'pencil.circle': 'create',
   'star.circle': 'star',
-  'pencil.and.scribble': 'draw'
+  'pencil.and.scribble': 'draw',
+  'person.circle': 'person'
 } as IconMapping;
 
 /**

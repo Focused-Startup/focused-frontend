@@ -71,7 +71,6 @@ export default function VerifyEmailScreen() {
   return (
     <AuthScreenShell
       title="Verify your email"
-      subtitle="Finish account setup by entering your verification code."
     >
       <ThemedTextInput
         placeholder="Verification code"
@@ -120,7 +119,7 @@ const styles = StyleSheet.create({
   },
   linksRow: {
     marginTop: 16,
-    alignItems: 'flex-end',
+    alignItems: 'center',
   },
   footerRow: {
     marginTop: 20,

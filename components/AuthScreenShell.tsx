@@ -14,11 +14,10 @@ import { ThemedView } from '@/components/ThemedView';
 
 type AuthScreenShellProps = {
   title: string;
-  subtitle: string;
   children: ReactNode;
 };
 
-export function AuthScreenShell({ title, subtitle, children }: AuthScreenShellProps) {
+export function AuthScreenShell({ title, children }: AuthScreenShellProps) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -38,12 +37,11 @@ export function AuthScreenShell({ title, subtitle, children }: AuthScreenShellPr
               />
             </View>
 
-            <ThemedText type="title" style={styles.title}>
+            <ThemedText type="subtitle" style={styles.title}>
               {title}
             </ThemedText>
-            <ThemedText style={styles.subtitle}>{subtitle}</ThemedText>
 
-            <View style={styles.formCard}>{children}</View>
+            <View>{children}</View>
           </ThemedView>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -78,18 +76,7 @@ const styles = StyleSheet.create({
   },
   title: {
     textAlign: 'center',
-    marginBottom: 6,
-  },
-  subtitle: {
-    textAlign: 'center',
     opacity: 0.8,
     marginBottom: 24,
-  },
-  formCard: {
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(79, 172, 254, 0.25)',
-    backgroundColor: 'rgba(79, 172, 254, 0.06)',
-  },
+  }
 });

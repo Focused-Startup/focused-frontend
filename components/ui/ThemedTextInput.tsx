@@ -16,13 +16,13 @@ export function ThemedTextInput({ style, ...props }: ThemedTextInputProps) {
       style={[
         styles.input,
         { 
-          borderColor: colors.icon, 
+          borderColor: colors.iconLight, 
           color: colors.text,
           backgroundColor: colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'transparent'
         },
         style
       ]}
-      placeholderTextColor={colors.icon}
+      placeholderTextColor={colors.iconLight}
       {...props}
     />
   );
