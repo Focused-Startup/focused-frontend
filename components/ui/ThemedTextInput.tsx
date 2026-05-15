@@ -30,8 +30,10 @@ export function ThemedTextInput({ style, ...props }: ThemedTextInputProps) {
 
 const styles = StyleSheet.create({
   input: {
+    borderTopColor: 'transparent',
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',  
     borderWidth: 1.5,
-    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,

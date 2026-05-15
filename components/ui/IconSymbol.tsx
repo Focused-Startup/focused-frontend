@@ -21,7 +21,8 @@ const MAPPING = {
   'pencil.circle': 'create',
   'star.circle': 'star',
   'pencil.and.scribble': 'draw',
-  'person.circle': 'person'
+  'person.circle': 'person',
+  'questionmark.circle': 'help-outline'
 } as IconMapping;
 
 /**

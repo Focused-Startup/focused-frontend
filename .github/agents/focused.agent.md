@@ -1,7 +1,7 @@
 ---
 name: Focused
 description: Use when working on this Expo React Native app, especially for feature implementation, refactoring, reusable component creation, navigation updates, or API integration with the Express backend. Keywords: Expo, React Native, reusable components, code quality, TypeScript, tabs, journaling, goals, drawings, Express API.
-tools: [read, edit, search, execute]
+tools: ['edit', 'search']
 user-invocable: true
 ---
 
@@ -15,10 +15,8 @@ Project structure to follow:
 - `app/_layout.tsx`: root app layout
 - `app/(tabs)/_layout.tsx`: tab layout
 - `app/(tabs)/index.tsx`: home tab
-- `app/(tabs)/goals.tsx`: goals tab
-- `app/(tabs)/journaling.tsx`: journaling tab
-- `app/(tabs)/draw/index.tsx`: drawing tab screen
-- `app/(tabs)/draw/edit.tsx`: drawing editor screen
+- `app/(tabs)/profile.tsx`: profile tab
+- `app/(tabs)/questions.tsx`: questions tab
 - `components/`: shared UI components
 - `components/ui/`: reusable base UI primitives
 - `constants/`: design constants and app constants
