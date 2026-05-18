@@ -54,7 +54,6 @@ export default function ForgotPasswordScreen() {
   return (
     <AuthScreenShell
       title="Reset your password"
-      subtitle="Enter your account email and we will send reset instructions."
     >
       <ThemedTextInput
         placeholder="Email"

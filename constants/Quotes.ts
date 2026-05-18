@@ -1,4 +1,4 @@
-export const quotes = [
+export const questions = [
     "The only way to do great work is to love what you do. - Steve Jobs",
     "Life is like riding a bicycle. To keep your balance you must keep moving. - Albert Einstein",
     "Where there is love there is life. - Mahatma Gandhi",

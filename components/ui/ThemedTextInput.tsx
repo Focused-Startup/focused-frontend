@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { TextInput, StyleSheet, TextInputProps } from 'react-native';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
@@ -7,22 +7,33 @@ interface ThemedTextInputProps extends Omit<TextInputProps, 'style'> {
   style?: TextInputProps['style'];
 }
 
-export function ThemedTextInput({ style, ...props }: ThemedTextInputProps) {
+export function ThemedTextInput({ style, onFocus, onBlur, ...props }: ThemedTextInputProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const [isFocused, setIsFocused] = useState(false);
 
   return (
     <TextInput
       style={[
         styles.input,
-        { 
-          borderColor: colors.iconLight, 
+        {
+          borderColor: colors.iconLight,
+          borderBottomColor: isFocused ? colors.tint : colors.iconLight,
           color: colors.text,
-          backgroundColor: colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'transparent'
+          backgroundColor: colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+          marginBottom: isFocused ? 20 : 16,
         },
         style
       ]}
       placeholderTextColor={colors.iconLight}
+      onFocus={(event) => {
+        setIsFocused(true);
+        onFocus?.(event);
+      }}
+      onBlur={(event) => {
+        setIsFocused(false);
+        onBlur?.(event);
+      }}
       {...props}
     />
   );

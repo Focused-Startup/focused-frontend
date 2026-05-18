@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useUser } from '@clerk/expo';
 import { desc, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
@@ -31,10 +32,9 @@ const SUGGESTED_GOALS = [
   'Call a friend/family member',
 ];
 
-function ProfileField({ label, value }: { label: string; value: string }) {
+function ProfileField({ value }: { value: string }) {
   return (
     <ThemedView style={styles.profileField}>
-      <ThemedText style={styles.fieldLabel}>{label}</ThemedText>
       <ThemedText style={styles.fieldValue}>{value}</ThemedText>
     </ThemedView>
   );
@@ -55,7 +55,7 @@ export default function ProfileScreen() {
   const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
   const [newNoteContent, setNewNoteContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feeling, setFeeling] = useState('—');
   const [errorMessage, setErrorMessage] = useState('');
   const [activeTab, setActiveTab] = useState<'notes' | 'goals'>('notes');
 
@@ -77,10 +77,15 @@ export default function ProfileScreen() {
     }
   }, [drizzleDb]);
 
+  const fetchNotesAndGoals = async () => {
+    // this is where we will fetch notes and goals from rds/aurora in the future, but for now we will fetch from sqlite
+    setFeeling('motivated');
+    await Promise.all([fetchNotes(), fetchGoals()]);
+  };
+
   useEffect(() => {
-    fetchNotes();
-    fetchGoals();
-  }, [fetchNotes, fetchGoals]);
+    fetchNotesAndGoals();
+  }, []);
 
   const saveNote = async () => {
     if (!newNoteContent.trim()) return;
@@ -179,8 +184,26 @@ export default function ProfileScreen() {
                 <ThemedText style={styles.emptyText}>Loading user info...</ThemedText>
               ) : (
                 <ThemedView style={styles.profileCard}>
-                  <ProfileField label="First name" value={user?.firstName ?? '—'} />
-                  <ProfileField label="Last name" value={user?.lastName ?? '—'} />
+                  <ThemedView style={styles.profileSummaryRow}>
+                    {user?.imageUrl ? (
+                      <Image source={{ uri: user.imageUrl }} style={styles.profileAvatar} />
+                    ) : (
+                      <ThemedView style={styles.profileAvatarPlaceholder}>
+                        <Ionicons name="person" size={34} color="#b0b7c3" />
+                      </ThemedView>
+                    )}
+                  <ThemedView style={styles.nameAndFeeling}>
+                  <ThemedView></ThemedView>
+                    <ThemedView style={styles.profileFieldsColumn}>
+                      <ProfileField value={user?.firstName ?? '—'} />
+                      <ProfileField value={user?.lastName ?? '—'} />
+                    </ThemedView>
+                    <ThemedView style={{padding: 4, flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6}}>
+                      <ThemedText>I am feeling: {feeling}</ThemedText>
+                      <Ionicons name="pencil-outline" size={16} color="#007AFF" onPress={() => setFeeling('crazy')} />
+                    </ThemedView>
+                  </ThemedView>
+                  </ThemedView>
 
                   {!!errorMessage && <ThemedText style={styles.errorText}>{errorMessage}</ThemedText>}
                 </ThemedView>
@@ -368,7 +391,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 100,
+    paddingTop: 60,
     paddingBottom: 100,
   },
   section: {
@@ -411,18 +434,35 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   profileCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    padding: 18,
-    borderRadius: 18,
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingBottom: 16,
+  },
+  profileSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  profileAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#f3f4f6',
+  },
+  profileAvatarPlaceholder: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#eef2f6',
+  },
+  profileFieldsColumn: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignSelf: 'flex-start',
   },
   profileField: {
-    paddingVertical: 4,
+    padding: 4,
   },
   fieldLabel: {
     fontSize: 12,
@@ -621,4 +661,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  nameAndFeeling: {
+    flex: 1,
+    flexDirection: 'column',
+  }
 });
