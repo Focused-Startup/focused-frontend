@@ -39,6 +39,13 @@
           "backgroundColor": "#ffffff"
         }
       ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Focused needs access to your photos so you can choose a profile picture.",
+          "cameraPermission": "Focused needs access to your camera so you can take a profile picture."
+        }
+      ],
       "expo-sqlite",
       "expo-secure-store",
       "expo-web-browser",

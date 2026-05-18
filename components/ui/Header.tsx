@@ -1,25 +1,23 @@
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
-import { Platform, StatusBar, StyleSheet, Animated, TouchableOpacity, Modal, View, Text } from 'react-native';
+import { Platform, StatusBar, StyleSheet, Animated, View } from 'react-native';
 import FocusedLogo from '@/components/FocusedLogo';
-import { useRef, useEffect, useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { Colors } from '@/constants/Colors';
+import { useRef, useEffect } from 'react';
 
 interface HeaderProps {
     isVisible?: boolean;
     title?: string;
     headerRight?: React.ReactNode;
+    headerLeft?: React.ReactNode;
 }
 
-export function Header({ isVisible = true, title, headerRight }: HeaderProps) {
+export function Header({ isVisible = true, title, headerRight, headerLeft }: HeaderProps) {
     const translateY = useRef(new Animated.Value(0)).current;
     const opacity = useRef(new Animated.Value(1)).current;
-    const [modalVisible, setModalVisible] = useState(false);
-    const colorScheme = useColorScheme();
-    const theme = colorScheme === 'dark' ? 'dark' : 'light';
-    const iconColor = Colors[theme].text;
+    const hasLeft = Boolean(headerLeft);
+    const hasRight = Boolean(headerRight);
+    const showCenteredTitle = hasLeft && hasRight;
+    const showLeftAlignedTitle = !hasLeft && hasRight;
 
     useEffect(() => {
         Animated.parallel([
@@ -37,26 +35,37 @@ export function Header({ isVisible = true, title, headerRight }: HeaderProps) {
     }, [isVisible, translateY, opacity]);
 
     return (
-        <>
-            <Animated.View style={[
+        <Animated.View
+            style={[
                 styles.container,
                 {
                     transform: [{ translateY }],
                     opacity,
-                }
-            ]}>
-                <ThemedView style={styles.content}>
+                },
+            ]}
+        >
+            <ThemedView style={styles.content}>
+                <View style={styles.sideContainer}>{headerLeft ?? null}</View>
+                <View style={styles.titleContainer}>
                     {title ? (
-                        <ThemedText type="title" style={styles.title}>{title}</ThemedText>
+                        <ThemedText
+                            type="title"
+                            numberOfLines={1}
+                            style={[
+                                styles.title,
+                                showCenteredTitle ? styles.centerTitle : undefined,
+                                showLeftAlignedTitle ? styles.leftTitle : undefined,
+                            ]}
+                        >
+                            {title}
+                        </ThemedText>
                     ) : (
                         <FocusedLogo />
                     )}
-                    <View style={styles.rightContainer}>
-                        {headerRight}
-                    </View>
-                </ThemedView>
-            </Animated.View>
-        </>
+                </View>
+                <View style={[styles.sideContainer, styles.rightContainer]}>{headerRight ?? null}</View>
+            </ThemedView>
+        </Animated.View>
     );
 }
 
@@ -70,64 +79,31 @@ const styles = StyleSheet.create({
         paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     content: {
-        display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
         width: '100%',
         paddingHorizontal: 16,
         paddingVertical: 8,
     },
-    iconContainer: {
-        padding: 4,
+    sideContainer: {
+        width: 40,
+        minHeight: 40,
+        justifyContent: 'center',
+    },
+    titleContainer: {
+        flex: 1,
+        justifyContent: 'center',
     },
     rightContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
+        alignItems: 'flex-end',
     },
     title: {
-        fontSize: 24,
-        fontWeight: 'bold',
+        textAlign: 'center',
     },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
+    centerTitle: {
+        textAlign: 'center',
     },
-    modalContent: {
-        backgroundColor: 'white',
-        borderRadius: 20,
-        padding: 20,
-        width: '80%',
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 5,
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 20,
-    },
-    modalItem: {
-        marginBottom: 20,
-        width: '100%',
-        alignItems: 'center',
-    },
-    closeButton: {
-        marginTop: 10,
-        padding: 10,
-    },
-    closeButtonText: {
-        color: '#007AFF',
-        fontSize: 16,
-        fontWeight: '600',
+    leftTitle: {
+        textAlign: 'left',
     },
 });

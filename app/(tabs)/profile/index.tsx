@@ -7,7 +7,8 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import { GradientButton } from '@/components/ui/GradientButton';
 import GoalsModal from '@/components/ui/GoalsModal';
 import Swipeable from '@/components/ui/CompatSwipeable';
@@ -45,6 +46,7 @@ export default function ProfileScreen() {
   const drizzleDb = useMemo(() => drizzle(db, { schema }), [db]);
   const { user, isLoaded } = useUser();
   const { signOut } = useAuth();
+  const colorScheme = useColorScheme();
 
   const [notesData, setNotesData] = useState<schema.Note[]>([]);
   const [activeGoals, setActiveGoals] = useState<schema.Goal[]>([]);
@@ -55,6 +57,7 @@ export default function ProfileScreen() {
   const [newNoteContent, setNewNoteContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [activeTab, setActiveTab] = useState<'notes' | 'goals'>('notes');
 
   const fetchNotes = useCallback(async () => {
     try {
@@ -135,24 +138,6 @@ export default function ProfileScreen() {
     );
   };
 
-  const handleSignOut = async () => {
-    if (isSubmitting) return;
-
-    setErrorMessage('');
-    setIsSubmitting(true);
-
-    try {
-      await signOut();
-      router.replace('/(auth)/login');
-    } catch (error: unknown) {
-      const fallback = 'Unable to sign out right now. Please try again.';
-      const authError = error as { message?: string };
-      setErrorMessage(authError?.message ?? fallback);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const renderRightActions = (id: number) => (
     <TouchableOpacity style={styles.deleteButton} onPress={() => deleteNote(id)}>
       <Ionicons name="trash-outline" size={24} color="white" />
@@ -166,20 +151,21 @@ export default function ProfileScreen() {
   );
 
   const headerRight = (
-    <View style={styles.headerButtons}>
-      <TouchableOpacity onPress={() => setIsPickerVisible(true)} activeOpacity={0.7}>
-        <Ionicons name="add-outline" size={32} color="#007AFF" />
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push('/settings')} activeOpacity={0.7}>
-        <Ionicons name="settings-outline" size={26} color="#007AFF" />
-      </TouchableOpacity>
-    </View>
+    <TouchableOpacity onPress={() => router.push(('/(tabs)/profile/settings'))} activeOpacity={0.7}>
+      <Ionicons name="settings-outline" size={26} color="#007AFF" />
+    </TouchableOpacity>
   );
+
+  const headerLeft= (
+    <TouchableOpacity onPress={() => setIsPickerVisible(true)} activeOpacity={0.7}>
+      <Ionicons name="add-outline" size={32} color="#007AFF" />
+    </TouchableOpacity>
+  )
 
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container} edges={['top']}>
-        <Header isVisible={isHeaderVisible} title="Profile" headerRight={headerRight} />
+        <Header isVisible={isHeaderVisible} title={user?.username ?? 'Profile'} headerRight={headerRight} headerLeft={headerLeft} />
         <ScrollView
           style={styles.scrollContainer}
           onScroll={handleScroll}
@@ -188,9 +174,6 @@ export default function ProfileScreen() {
         >
           <ThemedView style={styles.content}>
             <ThemedView style={styles.section}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>
-                Account
-              </ThemedText>
 
               {!isLoaded ? (
                 <ThemedText style={styles.emptyText}>Loading user info...</ThemedText>
@@ -198,84 +181,105 @@ export default function ProfileScreen() {
                 <ThemedView style={styles.profileCard}>
                   <ProfileField label="First name" value={user?.firstName ?? '—'} />
                   <ProfileField label="Last name" value={user?.lastName ?? '—'} />
-                  <ProfileField label="Username" value={user?.username ?? '—'} />
 
                   {!!errorMessage && <ThemedText style={styles.errorText}>{errorMessage}</ThemedText>}
-
-                  <GradientButton
-                    title={isSubmitting ? 'Signing out...' : 'Sign Out'}
-                    onPress={handleSignOut}
-                    disabled={isSubmitting}
-                  />
                 </ThemedView>
               )}
             </ThemedView>
 
             <ThemedView style={styles.section}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>
-                Notes
-              </ThemedText>
+              <ThemedView style={styles.tabSwitcher}>
+                <TouchableOpacity
+                  style={{
+                    ...styles.tabButton,
+                    ...(activeTab === 'notes' && styles.activeTabButton),
+                    borderBottomColor: activeTab === 'notes' ? Colors[colorScheme ?? 'light'].tint : '#b0b9c0',
+                  }}
+                  onPress={() => setActiveTab('notes')}
+                  activeOpacity={0.8}
+                >
+                  <ThemedText style={{...styles.tabButtonText, color: activeTab === 'notes' ? Colors[colorScheme ?? 'light'].tint : '#b0b9c0'}}>
+                    Notes
+                  </ThemedText>
+                </TouchableOpacity>
 
-              {notesData.length === 0 && (
-                <ThemedText style={styles.emptyText}>No notes yet. Tap + to add one.</ThemedText>
-              )}
-
-              {notesData.map((note) => (
-                <Swipeable key={note.id} renderRightActions={() => renderRightActions(note.id)}>
-                  <ThemedView style={styles.item}>
-                    <ThemedText style={styles.noteContent}>{note.content}</ThemedText>
-                    <ThemedText style={styles.noteDate}>
-                      {new Date(note.createdAt).toLocaleDateString(undefined, {
-                        weekday: 'short',
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </ThemedText>
-                  </ThemedView>
-                </Swipeable>
-              ))}
-            </ThemedView>
-
-            <ThemedView style={styles.section}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>
-                Goals
-              </ThemedText>
-
-              {activeGoals.length === 0 ? (
-                <ThemedText style={styles.emptyText}>No active goals. Pick one below!</ThemedText>
-              ) : (
-                activeGoals.map((goal) => (
-                  <Swipeable key={goal.id} renderRightActions={() => renderGoalActions(goal.id)}>
-                    <TouchableOpacity onPress={() => toggleGoalComplete(goal.id)} activeOpacity={0.8}>
-                      <ThemedView style={styles.goalCard}>
-                        <Ionicons
-                          name={completedGoalIds.includes(goal.id) ? 'checkmark-circle' : 'ellipse-outline'}
-                          size={24}
-                          color={completedGoalIds.includes(goal.id) ? '#4CAF50' : '#b0b7c3'}
-                        />
-                        <ThemedText style={styles.goalText}>{goal.content}</ThemedText>
-                      </ThemedView>
-                    </TouchableOpacity>
-                  </Swipeable>
-                ))
-              )}
-
-              <ThemedView style={styles.suggestionsGrid}>
-                {SUGGESTED_GOALS.map((suggestion, index) => {
-                  const isAdded = activeGoals.some((goal) => goal.content === suggestion);
-                  if (isAdded) return null;
-
-                  return (
-                    <TouchableOpacity key={index} style={styles.suggestionCard} onPress={() => addGoal(suggestion)}>
-                      <Ionicons name="add-circle-outline" size={20} color="#007AFF" />
-                      <ThemedText style={styles.suggestionText}>{suggestion}</ThemedText>
-                    </TouchableOpacity>
-                  );
-                })}
+                <TouchableOpacity
+                  style={{
+                    ...styles.tabButton,
+                    ...(activeTab === 'goals' && styles.activeTabButton),
+                    borderBottomColor: activeTab === 'goals' ? Colors[colorScheme ?? 'light'].tint : '#b0b9c0',
+                  }}
+                  onPress={() => setActiveTab('goals')}
+                  activeOpacity={0.8}
+                >
+                  <ThemedText style={{...styles.tabButtonText, color: activeTab === 'goals' ? Colors[colorScheme ?? 'light'].tint : '#b0b9c0'}}>
+                    Goals
+                  </ThemedText>
+                </TouchableOpacity>
               </ThemedView>
+
+              {activeTab === 'notes' && (
+                <>
+                  {notesData.length === 0 && (
+                    <ThemedText style={styles.emptyText}>No notes yet. Tap + to add one.</ThemedText>
+                  )}
+
+                  {notesData.map((note) => (
+                    <Swipeable key={note.id} renderRightActions={() => renderRightActions(note.id)}>
+                      <ThemedView style={styles.item}>
+                        <ThemedText style={styles.noteContent}>{note.content}</ThemedText>
+                        <ThemedText style={styles.noteDate}>
+                          {new Date(note.createdAt).toLocaleDateString(undefined, {
+                            weekday: 'short',
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </ThemedText>
+                      </ThemedView>
+                    </Swipeable>
+                  ))}
+                </>
+              )}
+
+              {activeTab === 'goals' && (
+                <>
+                  {activeGoals.length === 0 ? (
+                    <ThemedText style={styles.emptyText}>No active goals. Pick one below!</ThemedText>
+                  ) : (
+                    activeGoals.map((goal) => (
+                      <Swipeable key={goal.id} renderRightActions={() => renderGoalActions(goal.id)}>
+                        <TouchableOpacity onPress={() => toggleGoalComplete(goal.id)} activeOpacity={0.8}>
+                          <ThemedView style={styles.goalCard}>
+                            <Ionicons
+                              name={completedGoalIds.includes(goal.id) ? 'checkmark-circle' : 'ellipse-outline'}
+                              size={24}
+                              color={completedGoalIds.includes(goal.id) ? '#4CAF50' : '#b0b7c3'}
+                            />
+                            <ThemedText style={styles.goalText}>{goal.content}</ThemedText>
+                          </ThemedView>
+                        </TouchableOpacity>
+                      </Swipeable>
+                    ))
+                  )}
+
+                  <ThemedView style={styles.suggestionsGrid}>
+                    {SUGGESTED_GOALS.map((suggestion, index) => {
+                      const isAdded = activeGoals.some((goal) => goal.content === suggestion);
+                      if (isAdded) return null;
+
+                      return (
+                        <TouchableOpacity key={index} style={styles.suggestionCard} onPress={() => addGoal(suggestion)}>
+                          <Ionicons name="add-circle-outline" size={20} color="#007AFF" />
+                          <ThemedText style={styles.suggestionText}>{suggestion}</ThemedText>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ThemedView>
+                </>
+              )}
             </ThemedView>
           </ThemedView>
         </ScrollView>
@@ -374,6 +378,30 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  tabSwitcher: {
+    flexDirection: 'row',
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 16,
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    marginHorizontal: 4,
+  },
+  activeTabButton: {
+    backgroundColor: '#ffffff',
+    marginBottom: 4,
+    elevation: 1,
+  },
+  tabButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#7a8794',
   },
   sectionHeaderRow: {
     flexDirection: 'row',

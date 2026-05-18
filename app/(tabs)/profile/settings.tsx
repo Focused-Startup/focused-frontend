@@ -1,9 +1,6 @@
-// Note: profile picture upload requires `expo-image-picker`.
-// Install with: npx expo install expo-image-picker
-// Then uncomment the image-picker imports and usage below.
-
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useUser } from '@clerk/expo';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -21,7 +18,6 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedTextInput } from '@/components/ui/ThemedTextInput';
-import { GradientButton } from '@/components/ui/GradientButton';
 
 type Field = 'firstName' | 'lastName' | 'username' | 'password';
 
@@ -81,17 +77,40 @@ export default function SettingsScreen() {
   };
 
   const handlePickProfilePicture = async () => {
-    // Requires: npx expo install expo-image-picker
-    // Then import * as ImagePicker from 'expo-image-picker';
-    // const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1] });
-    // if (!result.canceled && result.assets[0]) {
-    //   const base64 = result.assets[0].base64;
-    //   await user?.setProfileImage({ file: `data:image/jpeg;base64,${base64}` });
-    // }
-    Alert.alert(
-      'Profile Picture',
-      'To enable photo uploads, run:\n\nnpx expo install expo-image-picker\n\nThen follow the code comments in settings.tsx.'
-    );
+    if (!user) {
+      Alert.alert('Profile Picture', 'Please wait for your account to finish loading and try again.');
+      return;
+    }
+
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Permission required', 'Allow photo library access to choose a new profile picture.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+      base64: true,
+    });
+
+    if (result.canceled || !result.assets?.[0]) {
+      return;
+    }
+
+    const asset = result.assets[0];
+    const file = asset.base64
+      ? `data:${asset.mimeType ?? 'image/jpeg'};base64,${asset.base64}`
+      : asset.uri;
+
+    try {
+      await user.setProfileImage({ file });
+      await user.reload();
+    } catch {
+      Alert.alert('Upload failed', 'Unable to update your profile picture. Please try again.');
+    }
   };
 
   const handleSignOut = async () => {
@@ -128,7 +147,7 @@ export default function SettingsScreen() {
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()} activeOpacity={0.7}>
             <Ionicons name="chevron-back" size={24} color="#007AFF" />
             <ThemedText style={styles.backText}>Profile</ThemedText>
           </TouchableOpacity>
@@ -226,48 +245,6 @@ export default function SettingsScreen() {
                   disabled={username.trim() === (user?.username ?? '')}
                 />
               </View>
-            </View>
-
-            {/* Password */}
-            <View style={styles.section}>
-              <ThemedText style={styles.sectionLabel}>CHANGE PASSWORD</ThemedText>
-              <ThemedTextInput
-                style={styles.passwordInput}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                placeholder="Current password"
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <ThemedTextInput
-                style={styles.passwordInput}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                placeholder="New password"
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <ThemedTextInput
-                style={styles.passwordInput}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                placeholder="Confirm new password"
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <GradientButton
-                title={savingField === 'password' ? 'Saving...' : 'Update Password'}
-                onPress={() => saveField('password')}
-                disabled={
-                  savingField === 'password' ||
-                  !currentPassword.trim() ||
-                  !newPassword.trim() ||
-                  !confirmPassword.trim()
-                }
-              />
             </View>
 
             {/* Sign Out */}
