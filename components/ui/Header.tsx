@@ -9,9 +9,10 @@ interface HeaderProps {
     title?: string;
     headerRight?: React.ReactNode;
     headerLeft?: React.ReactNode;
+    transparent?: boolean;
 }
 
-export function Header({ isVisible = true, title, headerRight, headerLeft }: HeaderProps) {
+export function Header({ isVisible = true, title, headerRight, headerLeft, transparent = false }: HeaderProps) {
     const translateY = useRef(new Animated.Value(0)).current;
     const opacity = useRef(new Animated.Value(1)).current;
     const hasLeft = Boolean(headerLeft);
@@ -44,8 +45,8 @@ export function Header({ isVisible = true, title, headerRight, headerLeft }: Hea
                 },
             ]}
         >
-            <ThemedView style={styles.content}>
-                <View style={styles.sideContainer}>{headerLeft ?? null}</View>
+            <ThemedView style={[styles.content, transparent && styles.transparentContent]}>
+                {headerLeft && <View style={styles.sideContainer}>{headerLeft ?? null}</View>}
                 <View style={styles.titleContainer}>
                     {title ? (
                         <ThemedText
@@ -99,6 +100,9 @@ const styles = StyleSheet.create({
     },
     title: {
         textAlign: 'center',
+    },
+    transparentContent: {
+        backgroundColor: 'transparent',
     },
     centerTitle: {
         textAlign: 'center',

@@ -1,39 +1,139 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useRef, useState } from 'react';
-import { PanResponder, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
+import { Animated, Dimensions, PanResponder, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Circle, Defs, Path, Pattern, Rect } from 'react-native-svg';
 
 import { ThemedText } from '@/components/ThemedText';
+import { Header } from '@/components/ui/Header';
 
-type Stroke = {
-  path: string;
+// ─── Canvas data model ────────────────────────────────────────────────────────
+
+/** A single sampled point in canvas-space coordinates. */
+export type StrokePoint = { x: number; y: number };
+
+/** A single stroke — safe to JSON.stringify and store in the DB. */
+export type Stroke = {
+  points: StrokePoint[];
   color: string;
   width: number;
 };
 
-const CANVAS_BACKGROUND_COLOR = '#ffffff';
+/**
+ * Root canvas object stored in the database as JSON.
+ * Viewport (pan/zoom) is transient UI state and is NOT included here.
+ */
+export type CanvasData = {
+  version: 1;
+  canvasSize: number;
+  strokes: Stroke[];
+};
+
+/** Derives an SVG path string from a stroke's point array (render-time only). */
+function pointsToPath(points: StrokePoint[]): string {
+  if (points.length === 0) return '';
+  // A single-point stroke (tap) needs a zero-length line so strokeLinecap="round"
+  // renders it as a visible dot.
+  if (points.length === 1) {
+    return `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)} L ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+  }
+  return points
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+    .join(' ');
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const CANVAS_SIZE = 4000;
+const DOT_SPACING = 28;
 const DRAW_COLORS = ['#2c3e50', '#ff3b30', '#007AFF', '#34C759', '#AF52DE', '#FF9500'];
 const STROKE_SIZES = [2, 4, 8, 14];
+const MIN_SCALE = 0.25;
+const MAX_SCALE = 6;
+
+const { width: SW, height: SH } = Dimensions.get('window');
+
+// Initial viewport: canvas centered on screen (canvas-space origin of viewport)
+const INITIAL_VX = (CANVAS_SIZE - SW) / 2;
+const INITIAL_VY = (CANVAS_SIZE - SH) / 2;
+
+// ─── Touch helpers ────────────────────────────────────────────────────────────
+
+function getTouchDistance(t: { pageX: number; pageY: number }[]): number {
+  return Math.hypot(t[0].pageX - t[1].pageX, t[0].pageY - t[1].pageY);
+}
+function getTouchMidpoint(t: { pageX: number; pageY: number }[]): { x: number; y: number } {
+  return { x: (t[0].pageX + t[1].pageX) / 2, y: (t[0].pageY + t[1].pageY) / 2 };
+}
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function HomeScreen() {
   const [strokes, setStrokes] = useState<Stroke[]>([]);
-  const [currentPath, setCurrentPath] = useState('');
+  const [currentPoints, setCurrentPoints] = useState<StrokePoint[]>([]);
   const [selectedColor, setSelectedColor] = useState(DRAW_COLORS[2]);
   const [selectedSize, setSelectedSize] = useState(STROKE_SIZES[1]);
   const [isErasing, setIsErasing] = useState(false);
+  const [isToolbarExpanded, setIsToolbarExpanded] = useState(true);
 
-  const activePathRef = useRef('');
-  const activeStrokeColor = isErasing ? CANVAS_BACKGROUND_COLOR : selectedColor;
+  /**
+   * Viewport state — drives SVG viewBox. NOT part of CanvasData.
+   * x/y = canvas-space coordinate of the screen's top-left corner.
+   * scale = pixels-per-canvas-unit.
+   */
+  const [viewport, setViewport] = useState({ x: INITIAL_VX, y: INITIAL_VY, scale: 1 });
+
+  // Toolbar animation
+  const toolbarOpacity = useRef(new Animated.Value(1)).current;
+  const toolbarSlide = useRef(new Animated.Value(0)).current;
+
+  // Viewport refs — always current inside PanResponder closures
+  const vxRef = useRef(INITIAL_VX);
+  const vyRef = useRef(INITIAL_VY);
+  const scaleRef = useRef(1);
+
+  // Gesture tracking refs
+  const activePointsRef = useRef<StrokePoint[]>([]);
+  const isDrawingRef = useRef(false);
+  const lastPinchDist = useRef<number | null>(null);
+  const lastMidpoint = useRef<{ x: number; y: number } | null>(null);
+
+  const activeStrokeColor = isErasing ? '#ffffff' : selectedColor;
+
+  /** Sync viewport refs and trigger a viewBox re-render. */
+  const applyViewport = (x: number, y: number, s: number) => {
+    vxRef.current = x;
+    vyRef.current = y;
+    scaleRef.current = s;
+    setViewport({ x, y, scale: s });
+  };
+
+  /**
+   * Map a screen-space touch point to canvas-space coordinates.
+   *
+   * SVG viewBox maps canvas rect (vx, vy, SW/scale, SH/scale) onto the screen,
+   * so the inverse is simply: canvasX = vx + screenX / scale.
+   */
+  const toCanvasCoords = (pageX: number, pageY: number): StrokePoint => ({
+    x: vxRef.current + pageX / scaleRef.current,
+    y: vyRef.current + pageY / scaleRef.current,
+  });
 
   const clearCanvas = () => {
     setStrokes([]);
-    setCurrentPath('');
-    activePathRef.current = '';
+    setCurrentPoints([]);
+    activePointsRef.current = [];
   };
 
-  const undoStroke = () => {
-    setStrokes((previousStrokes) => previousStrokes.slice(0, -1));
+  const undoStroke = () => setStrokes((prev) => prev.slice(0, -1));
+
+  const toggleToolbar = () => {
+    const expanding = !isToolbarExpanded;
+    setIsToolbarExpanded(expanding);
+    Animated.parallel([
+      Animated.timing(toolbarOpacity, { toValue: expanding ? 1 : 0, duration: 220, useNativeDriver: true }),
+      Animated.timing(toolbarSlide, { toValue: expanding ? 0 : -12, duration: 220, useNativeDriver: true }),
+    ]).start();
   };
 
   const panResponder = useMemo(
@@ -41,174 +141,280 @@ export default function HomeScreen() {
       PanResponder.create({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: (event) => {
-          const { locationX, locationY } = event.nativeEvent;
-          const newPath = `M ${locationX} ${locationY}`;
-          activePathRef.current = newPath;
-          setCurrentPath(newPath);
+
+        onPanResponderGrant: (evt) => {
+          const { touches } = evt.nativeEvent;
+          if (touches.length === 1) {
+            isDrawingRef.current = true;
+            const point = toCanvasCoords(touches[0].pageX, touches[0].pageY);
+            activePointsRef.current = [point];
+            setCurrentPoints([point]);
+          } else {
+            isDrawingRef.current = false;
+            activePointsRef.current = [];
+            setCurrentPoints([]);
+            lastPinchDist.current = getTouchDistance(touches);
+            lastMidpoint.current = getTouchMidpoint(touches);
+          }
         },
-        onPanResponderMove: (event) => {
-          const { locationX, locationY } = event.nativeEvent;
-          const updatedPath = `${activePathRef.current} L ${locationX} ${locationY}`;
-          activePathRef.current = updatedPath;
-          setCurrentPath(updatedPath);
+
+        onPanResponderMove: (evt) => {
+          const { touches } = evt.nativeEvent;
+
+          if (touches.length === 1 && isDrawingRef.current) {
+            const point = toCanvasCoords(touches[0].pageX, touches[0].pageY);
+            const updated = [...activePointsRef.current, point];
+            activePointsRef.current = updated;
+            setCurrentPoints(updated);
+            return;
+          }
+
+          if (touches.length >= 2) {
+            // Transition from drawing to pan/zoom
+            if (isDrawingRef.current) {
+              isDrawingRef.current = false;
+              activePointsRef.current = [];
+              setCurrentPoints([]);
+              lastPinchDist.current = getTouchDistance(touches);
+              lastMidpoint.current = getTouchMidpoint(touches);
+              return;
+            }
+
+            const newDist = getTouchDistance(touches);
+            const newMid = getTouchMidpoint(touches);
+
+            if (lastPinchDist.current !== null && lastMidpoint.current !== null) {
+              const oldScale = scaleRef.current;
+              const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, oldScale * (newDist / lastPinchDist.current)));
+
+              /**
+               * Viewport math (no transform-origin ambiguity):
+               *
+               * The canvas point under lastMidpoint must remain under newMid after
+               * both zoom and pan. In canvas-space:
+               *
+               *   canvasPointX = vx + lastMid.x / oldScale
+               *
+               * After the move, newMid should sit over the same canvas point:
+               *
+               *   newVX + newMid.x / newScale = canvasPointX
+               *   newVX = vx + lastMid.x / oldScale - newMid.x / newScale
+               */
+              const canvasX = vxRef.current + lastMidpoint.current.x / oldScale;
+              const canvasY = vyRef.current + lastMidpoint.current.y / oldScale;
+              const newVX = canvasX - newMid.x / newScale;
+              const newVY = canvasY - newMid.y / newScale;
+
+              applyViewport(newVX, newVY, newScale);
+            }
+
+            lastPinchDist.current = newDist;
+            lastMidpoint.current = newMid;
+          }
         },
+
         onPanResponderRelease: () => {
-          const finalizedPath = activePathRef.current;
-          if (!finalizedPath) return;
-
-          setStrokes((previousStrokes) => [
-            ...previousStrokes,
-            { path: finalizedPath, color: activeStrokeColor, width: selectedSize },
-          ]);
-          activePathRef.current = '';
-          setCurrentPath('');
+          const pts = activePointsRef.current;
+          if (isDrawingRef.current && pts.length > 0) {
+            setStrokes((prev) => [...prev, { points: pts, color: activeStrokeColor, width: selectedSize }]);
+          }
+          activePointsRef.current = [];
+          setCurrentPoints([]);
+          isDrawingRef.current = false;
+          lastPinchDist.current = null;
+          lastMidpoint.current = null;
         },
-        onPanResponderTerminate: () => {
-          const finalizedPath = activePathRef.current;
-          if (!finalizedPath) return;
 
-          setStrokes((previousStrokes) => [
-            ...previousStrokes,
-            { path: finalizedPath, color: activeStrokeColor, width: selectedSize },
-          ]);
-          activePathRef.current = '';
-          setCurrentPath('');
+        onPanResponderTerminate: () => {
+          const pts = activePointsRef.current;
+          if (isDrawingRef.current && pts.length > 0) {
+            setStrokes((prev) => [...prev, { points: pts, color: activeStrokeColor, width: selectedSize }]);
+          }
+          activePointsRef.current = [];
+          setCurrentPoints([]);
+          isDrawingRef.current = false;
+          lastPinchDist.current = null;
+          lastMidpoint.current = null;
         },
       }),
     [activeStrokeColor, selectedSize]
   );
 
+  /**
+   * SVG viewBox string — maps the visible canvas region onto the screen.
+   * With patternUnits="userSpaceOnUse", the dot Pattern tiles naturally
+   * in canvas coordinates without any manual offset calculation.
+   */
+  const viewBox = `${viewport.x} ${viewport.y} ${SW / viewport.scale} ${SH / viewport.scale}`;
+
+  /** Serialize canvas for DB storage: JSON.stringify(canvasData) */
+  // const canvasData: CanvasData = { version: 1, canvasSize: CANVAS_SIZE, strokes };
+
+  const dotsButton = (
+    <TouchableOpacity onPress={toggleToolbar} style={styles.dotsButton}>
+      <Ionicons name="ellipsis-vertical" size={20} color="#1f2937" />
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-        <View style={styles.canvasShell}>
-          <View style={styles.canvas} {...panResponder.panHandlers}>
-            <Svg width="100%" height="100%">
-              {strokes.map((stroke, index) => (
-                <Path
-                  key={`stroke-${index}`}
-                  d={stroke.path}
-                  stroke={stroke.color}
-                  strokeWidth={stroke.width}
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ))}
-              {currentPath ? (
-                <Path
-                  d={currentPath}
-                  stroke={activeStrokeColor}
-                  strokeWidth={selectedSize}
-                  fill="none"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              ) : null}
-            </Svg>
-          </View>
+    <View style={styles.root}>
+      {/* ── Full-screen SVG canvas (outside SafeArea so touches map to pageX/Y correctly) ── */}
+      <View style={StyleSheet.absoluteFill} {...panResponder.panHandlers}>
+        <Svg width={SW} height={SH} viewBox={viewBox}>
+          <Defs>
+            {/*
+              patternUnits="userSpaceOnUse" + viewBox = dots tile in canvas-space
+              automatically — no manual offset needed.
+              Dot radius is fixed in canvas units; they visually grow/shrink with zoom.
+            */}
+            <Pattern
+              id="dotGrid"
+              x="0"
+              y="0"
+              width={DOT_SPACING}
+              height={DOT_SPACING}
+              patternUnits="userSpaceOnUse"
+            >
+              <Circle cx="1.5" cy="1.5" r="1.5" fill="#c8cdd6" />
+            </Pattern>
+          </Defs>
 
-          <View style={styles.overlay} pointerEvents="box-none">
-            <View style={styles.toolbarCard}>
-              <View style={styles.row}>
-                <TouchableOpacity
-                  style={[styles.modeButton, !isErasing && styles.modeButtonActive]}
-                  onPress={() => setIsErasing(false)}
-                >
-                  <Ionicons name="brush" size={18} color={!isErasing ? '#fff' : '#1f2937'} />
-                  <ThemedText style={[styles.modeText, !isErasing && styles.modeTextActive]}>Draw</ThemedText>
-                </TouchableOpacity>
+          {/* Canvas background */}
+          <Rect x="0" y="0" width={CANVAS_SIZE} height={CANVAS_SIZE} fill="white" />
+          <Rect x="0" y="0" width={CANVAS_SIZE} height={CANVAS_SIZE} fill="url(#dotGrid)" />
 
-                <TouchableOpacity
-                  style={[styles.modeButton, isErasing && styles.modeButtonActive]}
-                  onPress={() => setIsErasing(true)}
-                >
-                  <Ionicons name="create-outline" size={18} color={isErasing ? '#fff' : '#1f2937'} />
-                  <ThemedText style={[styles.modeText, isErasing && styles.modeTextActive]}>Erase</ThemedText>
-                </TouchableOpacity>
+          {/* Committed strokes */}
+          {strokes.map((stroke, index) => (
+            <Path
+              key={`stroke-${index}`}
+              d={pointsToPath(stroke.points)}
+              stroke={stroke.color}
+              strokeWidth={stroke.width}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
 
-                <TouchableOpacity style={styles.iconButton} onPress={undoStroke}>
-                  <Ionicons name="return-up-back-outline" size={20} color="#1f2937" />
-                </TouchableOpacity>
+          {/* In-progress stroke */}
+          {currentPoints.length > 0 && (
+            <Path
+              d={pointsToPath(currentPoints)}
+              stroke={activeStrokeColor}
+              strokeWidth={selectedSize}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+        </Svg>
+      </View>
 
-                <TouchableOpacity style={styles.iconButton} onPress={clearCanvas}>
-                  <Ionicons name="trash-outline" size={20} color="#ff3b30" />
-                </TouchableOpacity>
+      {/* ── Header + toolbar float above the canvas ── */}
+      <SafeAreaView style={styles.uiLayer} pointerEvents="box-none" edges={['top', 'bottom']}>
+        <Header transparent headerRight={dotsButton} />
+
+        <Animated.View
+          pointerEvents={isToolbarExpanded ? 'box-none' : 'none'}
+          style={[
+            styles.toolbarOverlay,
+            { opacity: toolbarOpacity, transform: [{ translateY: toolbarSlide }] },
+          ]}
+        >
+          <View style={styles.toolbarCard}>
+            <View style={styles.row}>
+              <TouchableOpacity
+                style={[styles.modeButton, !isErasing && styles.modeButtonActive]}
+                onPress={() => setIsErasing(false)}
+              >
+                <Ionicons name="brush" size={18} color={!isErasing ? '#fff' : '#1f2937'} />
+                <ThemedText style={[styles.modeText, !isErasing && styles.modeTextActive]}>Draw</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modeButton, isErasing && styles.modeButtonActive]}
+                onPress={() => setIsErasing(true)}
+              >
+                <Ionicons name="create-outline" size={18} color={isErasing ? '#fff' : '#1f2937'} />
+                <ThemedText style={[styles.modeText, isErasing && styles.modeTextActive]}>Erase</ThemedText>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.iconButton} onPress={undoStroke}>
+                <Ionicons name="return-up-back-outline" size={20} color="#1f2937" />
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.iconButton} onPress={clearCanvas}>
+                <Ionicons name="trash-outline" size={20} color="#ff3b30" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionLabel}>Colors</ThemedText>
+              <View style={styles.colorRow}>
+                {DRAW_COLORS.map((color) => (
+                  <TouchableOpacity
+                    key={color}
+                    onPress={() => { setSelectedColor(color); setIsErasing(false); }}
+                    style={[
+                      styles.colorSwatch,
+                      { backgroundColor: color },
+                      selectedColor === color && !isErasing && styles.selectedColorSwatch,
+                    ]}
+                  />
+                ))}
               </View>
+            </View>
 
-              <View style={styles.section}>
-                <ThemedText style={styles.sectionLabel}>Colors</ThemedText>
-                <View style={styles.colorRow}>
-                  {DRAW_COLORS.map((color) => (
-                    <TouchableOpacity
-                      key={color}
-                      onPress={() => {
-                        setSelectedColor(color);
-                        setIsErasing(false);
-                      }}
+            <View style={styles.section}>
+              <ThemedText style={styles.sectionLabel}>Thickness</ThemedText>
+              <View style={styles.sizeRow}>
+                {STROKE_SIZES.map((size) => (
+                  <TouchableOpacity
+                    key={size}
+                    onPress={() => setSelectedSize(size)}
+                    style={[styles.sizeButton, selectedSize === size && styles.selectedSizeButton]}
+                  >
+                    <View
                       style={[
-                        styles.colorSwatch,
-                        { backgroundColor: color },
-                        selectedColor === color && !isErasing && styles.selectedColorSwatch,
+                        styles.sizePreview,
+                        { width: size * 2, height: size * 2, borderRadius: size, backgroundColor: selectedColor },
                       ]}
                     />
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.section}>
-                <ThemedText style={styles.sectionLabel}>Thickness</ThemedText>
-                <View style={styles.sizeRow}>
-                  {STROKE_SIZES.map((size) => (
-                    <TouchableOpacity
-                      key={size}
-                      onPress={() => setSelectedSize(size)}
-                      style={[styles.sizeButton, selectedSize === size && styles.selectedSizeButton]}
-                    >
-                      <View
-                        style={[
-                          styles.sizePreview,
-                          {
-                            width: size * 2,
-                            height: size * 2,
-                            borderRadius: size,
-                            backgroundColor: selectedColor,
-                          },
-                        ]}
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
           </View>
-        </View>
+        </Animated.View>
       </SafeAreaView>
-    </SafeAreaProvider>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: CANVAS_BACKGROUND_COLOR,
+    backgroundColor: '#f9fafb',
   },
-  canvasShell: {
+  uiLayer: {
     flex: 1,
-    backgroundColor: CANVAS_BACKGROUND_COLOR,
   },
-  canvas: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: CANVAS_BACKGROUND_COLOR,
+  toolbarOverlay: {
+    position: 'absolute',
+    top: 106,
+    left: 12,
+    right: 12,
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'flex-start',
-    padding: 12,
+  dotsButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.82)',
   },
   toolbarCard: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     borderRadius: 20,
     padding: 12,
     shadowColor: '#000',

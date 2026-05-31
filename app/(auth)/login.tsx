@@ -57,7 +57,7 @@ export default function LoginScreen() {
 
   return (
     <AuthScreenShell
-      title="Focused"
+      logo={true}
     >
       <ThemedTextInput
         placeholder="Email"

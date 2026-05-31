@@ -8,16 +8,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-
+import FocusedLogo from '@/components/FocusedLogo';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 
 type AuthScreenShellProps = {
-  title: string;
+  logo?: boolean;
+  title?: string;
   children: ReactNode;
 };
 
-export function AuthScreenShell({ title, children }: AuthScreenShellProps) {
+export function AuthScreenShell({ logo = false, title = '', children }: AuthScreenShellProps) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -36,7 +37,9 @@ export function AuthScreenShell({ title, children }: AuthScreenShellProps) {
                 contentFit="contain"
               />
             </View>
-
+            {logo && (
+                <FocusedLogo x={66} />
+            )}
             <ThemedText type="subtitle" style={styles.title}>
               {title}
             </ThemedText>
