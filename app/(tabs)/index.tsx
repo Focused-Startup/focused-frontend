@@ -98,7 +98,7 @@ export default function HomeScreen() {
   const lastPinchDist = useRef<number | null>(null);
   const lastMidpoint = useRef<{ x: number; y: number } | null>(null);
 
-  const activeStrokeColor = isErasing ? '#ffffff' : selectedColor;
+  const activeStrokeColor = selectedColor;
 
   /** Sync viewport refs and trigger a viewBox re-render. */
   const applyViewport = (x: number, y: number, s: number) => {
@@ -163,6 +163,18 @@ export default function HomeScreen() {
 
           if (touches.length === 1 && isDrawingRef.current) {
             const point = toCanvasCoords(touches[0].pageX, touches[0].pageY);
+            if (isErasing) {
+              const eraseRadius = selectedSize * 4;
+              setStrokes((prev) =>
+                prev.filter(
+                  (stroke) =>
+                    !stroke.points.some(
+                      (p) => Math.hypot(p.x - point.x, p.y - point.y) < eraseRadius
+                    )
+                )
+              );
+              return;
+            }
             const updated = [...activePointsRef.current, point];
             activePointsRef.current = updated;
             setCurrentPoints(updated);
@@ -215,7 +227,7 @@ export default function HomeScreen() {
 
         onPanResponderRelease: () => {
           const pts = activePointsRef.current;
-          if (isDrawingRef.current && pts.length > 0) {
+          if (isDrawingRef.current && pts.length > 0 && !isErasing) {
             setStrokes((prev) => [...prev, { points: pts, color: activeStrokeColor, width: selectedSize }]);
           }
           activePointsRef.current = [];
@@ -227,7 +239,7 @@ export default function HomeScreen() {
 
         onPanResponderTerminate: () => {
           const pts = activePointsRef.current;
-          if (isDrawingRef.current && pts.length > 0) {
+          if (isDrawingRef.current && pts.length > 0 && !isErasing) {
             setStrokes((prev) => [...prev, { points: pts, color: activeStrokeColor, width: selectedSize }]);
           }
           activePointsRef.current = [];
@@ -237,7 +249,7 @@ export default function HomeScreen() {
           lastMidpoint.current = null;
         },
       }),
-    [activeStrokeColor, selectedSize]
+    [activeStrokeColor, selectedSize, isErasing]
   );
 
   /**
@@ -281,6 +293,8 @@ export default function HomeScreen() {
 
           {/* Canvas background */}
           <Rect x="0" y="0" width={CANVAS_SIZE} height={CANVAS_SIZE} fill="white" />
+
+          {/* Dot grid — rendered above background, below strokes */}
           <Rect x="0" y="0" width={CANVAS_SIZE} height={CANVAS_SIZE} fill="url(#dotGrid)" />
 
           {/* Committed strokes */}
@@ -296,8 +310,8 @@ export default function HomeScreen() {
             />
           ))}
 
-          {/* In-progress stroke */}
-          {currentPoints.length > 0 && (
+          {/* In-progress stroke (hidden while erasing — erase removes strokes directly) */}
+          {!isErasing && currentPoints.length > 0 && (
             <Path
               d={pointsToPath(currentPoints)}
               stroke={activeStrokeColor}
