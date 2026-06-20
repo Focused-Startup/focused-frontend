@@ -1,15 +1,20 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Link, router } from 'expo-router';
-import { useSignUp } from '@clerk/expo';
+import { useSignUp, useUser } from '@clerk/expo';
 
 import { AuthScreenShell } from '@/components/AuthScreenShell';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedTextInput } from '@/components/ui/ThemedTextInput';
 import { GradientButton } from '@/components/ui/GradientButton';
+import { CREATE_USER, DELETE_USER } from '@/graphql/queries';
+import { useMutation } from '@apollo/client/react';
 
 export default function SignUpScreen() {
   const { fetchStatus, signUp } = useSignUp();
+  const { user } = useUser();
+  const [createUser, result] = useMutation(CREATE_USER);
+  const [deleteUser] = useMutation(DELETE_USER);
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -48,11 +53,29 @@ export default function SignUpScreen() {
         setErrorMessage(createError.longMessage ?? createError.message ?? 'Unable to create account.');
         return;
       }
+      await createUser({
+        variables: {
+          username: username.trim(),
+          email: email.trim(),
+          password,
+        },
+      });
+      console.log('User created in backend.');
+      console.log('result:', result.data);
 
       if (signUp.status === 'complete') {
         await signUp.finalize();
+      } else {
+        // get user id from gql response TODO
+        await deleteUser({ variables: { id: user?.id } });
+      }
+
+      if (result.data) {
         router.replace('/(tabs)');
         return;
+      } else {
+        setErrorMessage('Unable to finalize sign up. Please try again.');
+        await user?.delete();
       }
 
       const { error: sendError } = await signUp.verifications.sendEmailCode();
@@ -83,7 +106,6 @@ export default function SignUpScreen() {
   return (
     <AuthScreenShell
       title="Create your account"
-      subtitle="Use your details, email, and password to get started."
     > 
       <ThemedTextInput
         placeholder="Username"

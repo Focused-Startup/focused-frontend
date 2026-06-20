@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useRef, useState } from 'react';
-import { Animated, Dimensions, PanResponder, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Animated, Dimensions, PanResponder, StyleSheet, TouchableOpacity, View, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, Path, Pattern, Rect } from 'react-native-svg';
-
+import { gql } from '@apollo/client';
+import { useQuery } from '@apollo/client/react';
 import { ThemedText } from '@/components/ThemedText';
 import { Header } from '@/components/ui/Header';
 
@@ -57,6 +58,16 @@ const { width: SW, height: SH } = Dimensions.get('window');
 const INITIAL_VX = (CANVAS_SIZE - SW) / 2;
 const INITIAL_VY = (CANVAS_SIZE - SH) / 2;
 
+const MY_CANVAS_QUERY = gql`
+  query MyCanvasQuery($canvasId: Int!) {
+    canvas(id: $canvasId) {
+      id
+      drawingData
+      ownerId
+      visibility
+    }
+}`
+
 // ─── Touch helpers ────────────────────────────────────────────────────────────
 
 function getTouchDistance(t: { pageX: number; pageY: number }[]): number {
@@ -75,6 +86,13 @@ export default function HomeScreen() {
   const [selectedSize, setSelectedSize] = useState(STROKE_SIZES[1]);
   const [isErasing, setIsErasing] = useState(false);
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(true);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const { data, loading, error } = useQuery(MY_CANVAS_QUERY, {
+    variables: { canvasId: 1 },
+  });
+
+  const openModal = () => setIsModalVisible(true);
+  const closeModal = () => setIsModalVisible(false);
 
   /**
    * Viewport state — drives SVG viewBox. NOT part of CanvasData.
@@ -259,9 +277,6 @@ export default function HomeScreen() {
    */
   const viewBox = `${viewport.x} ${viewport.y} ${SW / viewport.scale} ${SH / viewport.scale}`;
 
-  /** Serialize canvas for DB storage: JSON.stringify(canvasData) */
-  // const canvasData: CanvasData = { version: 1, canvasSize: CANVAS_SIZE, strokes };
-
   const dotsButton = (
     <TouchableOpacity onPress={toggleToolbar} style={styles.dotsButton}>
       <Ionicons name="ellipsis-vertical" size={20} color="#1f2937" />
@@ -357,7 +372,7 @@ export default function HomeScreen() {
                 <Ionicons name="return-up-back-outline" size={20} color="#1f2937" />
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.iconButton} onPress={clearCanvas}>
+              <TouchableOpacity style={styles.iconButton} onPress={openModal}>
                 <Ionicons name="trash-outline" size={20} color="#ff3b30" />
               </TouchableOpacity>
             </View>
@@ -401,6 +416,27 @@ export default function HomeScreen() {
           </View>
         </Animated.View>
       </SafeAreaView>
+
+      {isModalVisible && (
+        <Modal transparent animationType="fade" onRequestClose={closeModal}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
+            <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 10, width: '80%' }}>
+              <ThemedText style={{ fontSize: 16, marginBottom: 20 }}>Clear the canvas? This cannot be undone.</ThemedText>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+                <TouchableOpacity onPress={closeModal} style={{ paddingVertical: 8, paddingHorizontal: 12 }}>
+                  <ThemedText style={{ color: '#007AFF' }}>Cancel</ThemedText>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => { clearCanvas(); closeModal(); }}
+                  style={{ paddingVertical: 8, paddingHorizontal: 12 }}
+                >
+                  <ThemedText style={{ color: '#ff3b30' }}>Clear</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }

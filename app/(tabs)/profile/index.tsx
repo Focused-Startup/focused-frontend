@@ -1,12 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useUser } from '@clerk/expo';
-import { desc, eq } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
-import { useSQLiteContext } from 'expo-sqlite';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -16,8 +13,10 @@ import Swipeable from '@/components/ui/CompatSwipeable';
 import { Header } from '@/components/ui/Header';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import * as schema from '@/db/schema';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
+
+type Note = { id: number; content: string; createdAt: number };
+type Goal = { id: number; content: string; isActive: boolean; createdAt: number };
 
 const SUGGESTED_GOALS = [
   'Drink 8 glasses of water',
@@ -42,14 +41,12 @@ function ProfileField({ value }: { value: string }) {
 
 export default function ProfileScreen() {
   const { isHeaderVisible, handleScroll, scrollEventThrottle } = useScrollHeader();
-  const db = useSQLiteContext();
-  const drizzleDb = useMemo(() => drizzle(db, { schema }), [db]);
   const { user, isLoaded } = useUser();
   const { signOut } = useAuth();
   const colorScheme = useColorScheme();
 
-  const [notesData, setNotesData] = useState<schema.Note[]>([]);
-  const [activeGoals, setActiveGoals] = useState<schema.Goal[]>([]);
+  const [notesData, setNotesData] = useState<Note[]>([]);
+  const [activeGoals, setActiveGoals] = useState<Goal[]>([]);
   const [completedGoalIds, setCompletedGoalIds] = useState<number[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isPickerVisible, setIsPickerVisible] = useState(false);
@@ -60,25 +57,17 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<'notes' | 'goals'>('notes');
 
   const fetchNotes = useCallback(async () => {
-    try {
-      const results = await drizzleDb.select().from(schema.notes).orderBy(desc(schema.notes.createdAt));
-      setNotesData(results);
-    } catch (error) {
-      console.error('Error fetching notes:', error);
-    }
-  }, [drizzleDb]);
+    // TODO: fetch notes from backend via GraphQL
+    setNotesData([]);
+  }, []);
 
   const fetchGoals = useCallback(async () => {
-    try {
-      const results = await drizzleDb.select().from(schema.goals).where(eq(schema.goals.isActive, true));
-      setActiveGoals(results);
-    } catch (error) {
-      console.error('Error fetching goals:', error);
-    }
-  }, [drizzleDb]);
+    // TODO: fetch goals from backend via GraphQL
+    setActiveGoals([]);
+  }, []);
 
   const fetchNotesAndGoals = async () => {
-    // this is where we will fetch notes and goals from rds/aurora in the future, but for now we will fetch from sqlite
+    // TODO: fetch notes and goals from RDS/Aurora via GraphQL
     setFeeling('motivated');
     await Promise.all([fetchNotes(), fetchGoals()]);
   };
@@ -89,52 +78,25 @@ export default function ProfileScreen() {
 
   const saveNote = async () => {
     if (!newNoteContent.trim()) return;
-
-    try {
-      await drizzleDb.insert(schema.notes).values({
-        content: newNoteContent,
-        createdAt: Date.now(),
-      });
-      setNewNoteContent('');
-      setIsNoteModalVisible(false);
-      fetchNotes();
-    } catch (error) {
-      console.error('Error inserting note:', error);
-    }
+    // TODO: save note via GraphQL mutation
+    setNewNoteContent('');
+    setIsNoteModalVisible(false);
   };
 
   const deleteNote = async (id: number) => {
-    try {
-      await drizzleDb.delete(schema.notes).where(eq(schema.notes.id, id));
-      fetchNotes();
-    } catch (error) {
-      console.error('Error deleting note:', error);
-    }
+    // TODO: delete note via GraphQL mutation
+    setNotesData((prev) => prev.filter((n) => n.id !== id));
   };
 
   const addGoal = async (content: string) => {
     if (activeGoals.some((goal) => goal.content === content)) return;
-
-    try {
-      await drizzleDb.insert(schema.goals).values({
-        content,
-        isActive: true,
-        createdAt: Date.now(),
-      });
-      fetchGoals();
-    } catch (error) {
-      console.error('Error adding goal:', error);
-    }
+    // TODO: add goal via GraphQL mutation
   };
 
   const removeGoal = async (id: number) => {
-    try {
-      await drizzleDb.delete(schema.goals).where(eq(schema.goals.id, id));
-      setCompletedGoalIds((previousIds) => previousIds.filter((goalId) => goalId !== id));
-      fetchGoals();
-    } catch (error) {
-      console.error('Error removing goal:', error);
-    }
+    // TODO: remove goal via GraphQL mutation
+    setActiveGoals((prev) => prev.filter((g) => g.id !== id));
+    setCompletedGoalIds((previousIds) => previousIds.filter((goalId) => goalId !== id));
   };
 
   const toggleGoalComplete = (id: number) => {

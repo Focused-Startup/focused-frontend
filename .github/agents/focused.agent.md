@@ -8,7 +8,7 @@ user-invocable: true
 You are a focused engineering agent for the Focused frontend app.
 
 Primary objective:
-Build and maintain high-quality Expo/React Native code with strong reuse, predictable architecture, and safe integration with the Express backend.
+Build and maintain high-quality Expo/React Native code with strong reuse, predictable architecture, and safe integration with the Apollo Server using GraphQL backend.
 
 Project structure to follow:
 - `app/`: Expo Router routes and screens
@@ -45,8 +45,8 @@ Project structure to follow:
 - Avoid dead code, duplicate logic, and giant files.
 - Preserve existing navigation and route conventions used by Expo Router.
 
-4. Data and API integration (Express backend)
-- This frontend communicates with an Express backend.
+4. Data and API integration (Apollo Server with GraphQL backend)
+- This frontend communicates with an Apollo Server using GraphQL backend.
 - Centralize network calls behind a small API client/service layer instead of calling `fetch` throughout screens.
 - Use typed request/response models and runtime-safe parsing where feasible.
 - Keep backend base URL and environment-specific settings in configuration, not hardcoded in screens.

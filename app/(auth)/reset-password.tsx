@@ -82,7 +82,6 @@ export default function ResetPasswordScreen() {
   return (
     <AuthScreenShell
       title="Set a new password"
-      subtitle={email ? `Resetting password for ${email}` : 'Use the code sent to your email.'}
     >
       <ThemedTextInput
         placeholder="Reset code"

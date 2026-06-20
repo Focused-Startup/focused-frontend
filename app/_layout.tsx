@@ -3,15 +3,16 @@ import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { Suspense, useEffect } from 'react';
+import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { SQLiteProvider, openDatabaseSync } from 'expo-sqlite';
-import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
-import migrations from '@/drizzle/migrations';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ClerkProvider, useAuth } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
+import { ApolloClient, HttpLink, InMemoryCache, ApolloLink } from "@apollo/client";
+import { ApolloProvider } from "@apollo/client/react";
+import { GraphQLWsLink } from "@apollo/client/link/subscriptions";
+import { getMainDefinition } from "@apollo/client/utilities";
+import { createClient } from "graphql-ws";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!
 
@@ -23,7 +24,32 @@ const LightTheme = {
   }
 }
 
-export const DATABASE_NAME = 'app.db';
+const httpLink = new HttpLink({
+  uri: process.env.EXPO_PUBLIC_FOCUSED_BACKEND_URL,
+});
+
+const wsLink = new GraphQLWsLink(
+  createClient({
+    url: process.env.EXPO_PUBLIC_FOCUSED_BACKEND_WS_URL!, // e.g. wss://api.focused-backend.com/graphql
+  })
+);
+
+const splitLink = ApolloLink.split(
+  ({ query }) => {
+    const definition = getMainDefinition(query);
+    return (
+      definition.kind === 'OperationDefinition' &&
+      definition.operation === 'subscription'
+    );
+  },
+  wsLink,   // subscriptions → WebSocket
+  httpLink, // queries & mutations → HTTP
+);
+
+const client = new ApolloClient({
+  link: splitLink,
+  cache: new InMemoryCache(),
+});
 
 function AppNavigation() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -66,25 +92,11 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
-  const expoDb = openDatabaseSync(DATABASE_NAME);
-  const db = drizzle(expoDb);
-  const { success, error } = useMigrations(db, migrations);
-
-  useEffect(() => {
-    if (!success) return;
-    console.log('Migration success:', success);
-  }, [success]);
-
-  useEffect(() => {
-    if (!error) return;
-    console.error('Migration error:', error);
-  }, [error]);
-
   if (!publishableKey) {
     throw new Error('Add your Clerk Publishable Key to the .env file');
   }
 
-  if (!loaded || !success) {
+  if (!loaded) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" />
@@ -94,17 +106,15 @@ export default function RootLayout() {
 
   return (
     // Clerk Expo setup guide: https://clerk.com/docs/quickstarts/expo
-    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : LightTheme}>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <Suspense fallback={<ActivityIndicator size="large" />}>
-            <SQLiteProvider databaseName={'app.db'} options={{ enableChangeListener: true }} useSuspense>
-              <AppNavigation />
-              <StatusBar style="auto" />
-            </SQLiteProvider>
-          </Suspense>
-        </GestureHandlerRootView>
-      </ThemeProvider>
-    </ClerkProvider>
+    <ApolloProvider client={client}>
+      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : LightTheme}>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <AppNavigation />
+            <StatusBar style="auto" />
+          </GestureHandlerRootView>
+        </ThemeProvider>
+      </ClerkProvider>
+    </ApolloProvider>
   );
 }
