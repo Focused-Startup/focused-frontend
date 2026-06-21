@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ClerkProvider, useAuth } from '@clerk/expo';
+import { UserProvider } from '@/contexts/UserContext';
 import { tokenCache } from '@clerk/expo/token-cache';
 import { ApolloClient, HttpLink, InMemoryCache, ApolloLink } from "@apollo/client";
 import { ApolloProvider } from "@apollo/client/react";
@@ -66,6 +67,7 @@ function AppNavigation() {
     }
 
     if (isSignedIn && isAuthRoute) {
+      if (segments.includes('verify-email')) return;
       router.replace('/(tabs)');
     }
   }, [isLoaded, isSignedIn, isAuthRoute, router]);
@@ -110,7 +112,9 @@ export default function RootLayout() {
       <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : LightTheme}>
           <GestureHandlerRootView style={{ flex: 1 }}>
-            <AppNavigation />
+            <UserProvider>
+              <AppNavigation />
+            </UserProvider>
             <StatusBar style="auto" />
           </GestureHandlerRootView>
         </ThemeProvider>

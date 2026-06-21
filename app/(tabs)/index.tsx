@@ -7,6 +7,7 @@ import { gql } from '@apollo/client';
 import { useQuery } from '@apollo/client/react';
 import { ThemedText } from '@/components/ThemedText';
 import { Header } from '@/components/ui/Header';
+import { useAppUser } from '@/contexts/UserContext';
 
 // ─── Canvas data model ────────────────────────────────────────────────────────
 
@@ -87,8 +88,9 @@ export default function HomeScreen() {
   const [isErasing, setIsErasing] = useState(false);
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const { appUser, loading: userLoading, error: userError, refetch } = useAppUser();
   const { data, loading, error } = useQuery(MY_CANVAS_QUERY, {
-    variables: { canvasId: 1 },
+    variables: { ownerId: appUser?.id },
   });
 
   const openModal = () => setIsModalVisible(true);

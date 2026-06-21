@@ -15,7 +15,6 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
   const disabled = useMemo(() => {
     return !email.trim() || !password.trim() || isSubmitting || fetchStatus === 'fetching';
   }, [email, password, isSubmitting, fetchStatus]);

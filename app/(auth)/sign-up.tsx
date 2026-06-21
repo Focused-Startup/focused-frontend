@@ -13,8 +13,7 @@ import { useMutation } from '@apollo/client/react';
 export default function SignUpScreen() {
   const { fetchStatus, signUp } = useSignUp();
   const { user } = useUser();
-  const [createUser, result] = useMutation(CREATE_USER);
-  const [deleteUser] = useMutation(DELETE_USER);
+  const [createUser] = useMutation(CREATE_USER);
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -49,33 +48,32 @@ export default function SignUpScreen() {
         emailAddress: email.trim(),
         password,
       });
+
       if (createError) {
         setErrorMessage(createError.longMessage ?? createError.message ?? 'Unable to create account.');
         return;
       }
-      await createUser({
+      
+      if (signUp.status === 'complete') {
+        const { error: finalizeError } = await signUp.finalize();
+        if (finalizeError) {
+          setErrorMessage(finalizeError.longMessage ?? finalizeError.message ?? 'Unable to finalize sign up.');
+          return;
+        }
+      }
+
+      const { error: createUserError } = await createUser({
         variables: {
           username: username.trim(),
-          email: email.trim(),
+          email: email.trim(),  
           password,
         },
       });
-      console.log('User created in backend.');
-      console.log('result:', result.data);
 
-      if (signUp.status === 'complete') {
-        await signUp.finalize();
-      } else {
-        // get user id from gql response TODO
-        await deleteUser({ variables: { id: user?.id } });
-      }
-
-      if (result.data) {
-        router.replace('/(tabs)');
-        return;
-      } else {
+      if (createUserError) {
         setErrorMessage('Unable to finalize sign up. Please try again.');
         await user?.delete();
+        return;
       }
 
       const { error: sendError } = await signUp.verifications.sendEmailCode();
@@ -85,7 +83,7 @@ export default function SignUpScreen() {
       }
 
       setInfoMessage('Verification code sent. Check your email to continue.');
-      router.push('./verify-email');
+      router.push('/verify-email');
     } catch (error: unknown) {
       const fallback = 'Unable to create your account right now.';
       const clerkError = error as { message?: string };
