@@ -7,9 +7,12 @@ import { AuthScreenShell } from '@/components/AuthScreenShell';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedTextInput } from '@/components/ui/ThemedTextInput';
 import { GradientButton } from '@/components/ui/GradientButton';
+import { useLazyQuery } from '@apollo/client/react';
+import { GET_USER } from '@/graphql/queries';
 
 export default function LoginScreen() {
   const { fetchStatus, signIn } = useSignIn();
+  const [getUser, { error: getUserError }] = useLazyQuery(GET_USER);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,6 +38,13 @@ export default function LoginScreen() {
       const { error: pwError } = await signIn.password({ password });
       if (pwError) {
         setErrorMessage(pwError.longMessage ?? pwError.message ?? 'Invalid password.');
+        return;
+      }
+
+      await getUser({ variables: { email: email.trim() } });
+
+      if (getUserError) {
+        setErrorMessage(getUserError.message ?? 'Unable to find account with that email. Please check your email and try again.');
         return;
       }
 

@@ -1,19 +1,15 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Link, router } from 'expo-router';
-import { useSignUp, useUser } from '@clerk/expo';
+import { useAuth, useSignUp, useUser } from '@clerk/expo';
 
 import { AuthScreenShell } from '@/components/AuthScreenShell';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedTextInput } from '@/components/ui/ThemedTextInput';
 import { GradientButton } from '@/components/ui/GradientButton';
-import { CREATE_USER, DELETE_USER } from '@/graphql/queries';
-import { useMutation } from '@apollo/client/react';
 
 export default function SignUpScreen() {
   const { fetchStatus, signUp } = useSignUp();
-  const { user } = useUser();
-  const [createUser] = useMutation(CREATE_USER);
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -51,28 +47,6 @@ export default function SignUpScreen() {
 
       if (createError) {
         setErrorMessage(createError.longMessage ?? createError.message ?? 'Unable to create account.');
-        return;
-      }
-      
-      if (signUp.status === 'complete') {
-        const { error: finalizeError } = await signUp.finalize();
-        if (finalizeError) {
-          setErrorMessage(finalizeError.longMessage ?? finalizeError.message ?? 'Unable to finalize sign up.');
-          return;
-        }
-      }
-
-      const { error: createUserError } = await createUser({
-        variables: {
-          username: username.trim(),
-          email: email.trim(),  
-          password,
-        },
-      });
-
-      if (createUserError) {
-        setErrorMessage('Unable to finalize sign up. Please try again.');
-        await user?.delete();
         return;
       }
 

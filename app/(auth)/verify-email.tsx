@@ -1,20 +1,24 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Link, router } from 'expo-router';
-import { useSignUp } from '@clerk/expo';
+import { useSignUp, useUser } from '@clerk/expo';
 
 import { AuthScreenShell } from '@/components/AuthScreenShell';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedTextInput } from '@/components/ui/ThemedTextInput';
 import { GradientButton } from '@/components/ui/GradientButton';
+import { CREATE_USER } from '@/graphql/queries';
+import { useMutation } from '@apollo/client/react';
 
 export default function VerifyEmailScreen() {
   const { fetchStatus, signUp } = useSignUp();
+  const { user } = useUser();
 
   const [code, setCode] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [infoMessage, setInfoMessage] = useState('Enter the code we sent to your email.');
+  const [createUser] = useMutation(CREATE_USER);
 
   const disabled = useMemo(() => {
     return !code.trim() || isSubmitting || fetchStatus === 'fetching';
@@ -36,7 +40,19 @@ export default function VerifyEmailScreen() {
       }
 
       if (signUp.status === 'complete') {
-        await signUp.finalize();
+        const finalizeResult = await signUp.finalize();
+        if (finalizeResult.error) {
+          setErrorMessage(finalizeResult.error.longMessage ?? finalizeResult.error.message ?? 'Unable to finalize sign-up. Please try again.');
+          return;
+        }
+        const username = user?.username ?? '';
+        const email = user?.primaryEmailAddress?.emailAddress ?? '';
+        await createUser({
+          variables: {
+            username: username.trim(),
+            email: email.trim(),  
+          },
+        });
         router.replace('/(tabs)');
         return;
       }
