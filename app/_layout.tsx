@@ -70,7 +70,7 @@ function AppNavigation() {
       if (segments.includes('verify-email')) return;
       router.replace('/(tabs)');
     }
-  }, [isLoaded, isSignedIn, isAuthRoute, router]);
+  }, [isLoaded, isSignedIn, isAuthRoute, router, segments]);
 
   if (!isLoaded) {
     return (

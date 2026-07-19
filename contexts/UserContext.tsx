@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useAuth, useUser } from '@clerk/expo';
-import { useLazyQuery } from '@apollo/client/react';
-import { GET_USER } from '@/graphql/queries';
+import { useLazyQuery, useMutation } from '@apollo/client/react';
+import { GET_USER, UPDATE_USER } from '@/graphql/queries';
 
 export interface AppUser {
   id: number;
@@ -34,8 +34,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const [fetchUser, { loading }] = useLazyQuery<{ user: AppUser | null }>(GET_USER);
-
+  const [updateUser] = useMutation(UPDATE_USER);
   const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress;
+  const firstName = clerkUser?.firstName;
+  const lastName = clerkUser?.lastName;
 
   const refetch = () => {
     if (primaryEmail) {
@@ -44,14 +46,24 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (isSignedIn && primaryEmail) {
-        const { data, error } = await fetchUser({ variables: { email: primaryEmail } });
+    const updateAndFetchData = async () => {
+      if (isSignedIn && clerkUser) {
+        const { data, error } = await fetchUser({ variables: { email: appUser?.email || primaryEmail } });
+        await updateUser({
+          variables: {
+            id: data?.user?.id,
+            email: primaryEmail,
+            firstName: firstName ?? '',
+            lastName: lastName ?? '',
+            username: clerkUser.username ?? '',
+          },
+        });
         if (error) {
           setError(error.message ?? 'Failed to load user.');
           return;
         }
         if (data?.user) {
+
           setAppUser(data.user);
           setError(null);
         } else {
@@ -62,8 +74,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setError(null);
       }
     };
-    fetchData();
-  }, [isSignedIn, primaryEmail]);
+    updateAndFetchData();
+  }, [isSignedIn, clerkUser]);
 
   return (
     <UserContext.Provider value={{ appUser, loading, error, refetch }}>

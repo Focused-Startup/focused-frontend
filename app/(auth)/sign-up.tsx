@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Link, router } from 'expo-router';
-import { useAuth, useSignUp, useUser } from '@clerk/expo';
+import { useSignUp } from '@clerk/expo';
 
 import { AuthScreenShell } from '@/components/AuthScreenShell';
 import { ThemedText } from '@/components/ThemedText';

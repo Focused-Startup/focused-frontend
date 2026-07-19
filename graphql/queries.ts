@@ -31,3 +31,16 @@ export const GET_USER = gql`
       updatedAt
   }
 }`;
+
+export const UPDATE_USER = gql`
+  mutation UpdateUser($id: Int!, $username: String, $email: String, $firstName: String, $lastName: String) {
+    updateUser(id: $id, username: $username, email: $email, firstName: $firstName, lastName: $lastName) {
+      id
+      email
+      username
+      firstName
+      lastName
+      createdAt
+      updatedAt
+  }
+}`;

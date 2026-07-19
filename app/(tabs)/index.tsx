@@ -88,7 +88,7 @@ export default function HomeScreen() {
   const [isErasing, setIsErasing] = useState(false);
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const { appUser, loading: userLoading, error: userError, refetch } = useAppUser();
+  const { appUser } = useAppUser();
   const { data, loading, error } = useQuery(MY_CANVAS_QUERY, {
     variables: { ownerId: appUser?.id },
   });

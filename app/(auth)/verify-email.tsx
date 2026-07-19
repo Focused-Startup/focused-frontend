@@ -45,8 +45,9 @@ export default function VerifyEmailScreen() {
           setErrorMessage(finalizeResult.error.longMessage ?? finalizeResult.error.message ?? 'Unable to finalize sign-up. Please try again.');
           return;
         }
-        const username = user?.username ?? '';
-        const email = user?.primaryEmailAddress?.emailAddress ?? '';
+
+        const username = signUp.username ?? user?.username ?? '';
+        const email = signUp.emailAddress ?? user?.primaryEmailAddress?.emailAddress ?? '';
         await createUser({
           variables: {
             username: username.trim(),

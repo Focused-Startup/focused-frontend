@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth, useUser } from '@clerk/expo';
+import { useUser } from '@clerk/expo';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
@@ -7,7 +7,6 @@ import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInpu
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { GradientButton } from '@/components/ui/GradientButton';
 import GoalsModal from '@/components/ui/GoalsModal';
 import Swipeable from '@/components/ui/CompatSwipeable';
 import { Header } from '@/components/ui/Header';
@@ -42,7 +41,6 @@ function ProfileField({ value }: { value: string }) {
 export default function ProfileScreen() {
   const { isHeaderVisible, handleScroll, scrollEventThrottle } = useScrollHeader();
   const { user, isLoaded } = useUser();
-  const { signOut } = useAuth();
   const colorScheme = useColorScheme();
 
   const [notesData, setNotesData] = useState<Note[]>([]);
@@ -74,7 +72,7 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     fetchNotesAndGoals();
-  }, []);
+  }, [fetchNotesAndGoals]);
 
   const saveNote = async () => {
     if (!newNoteContent.trim()) return;
@@ -424,7 +422,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   profileField: {
-    padding: 4,
+    padding: 2,
   },
   fieldLabel: {
     fontSize: 12,

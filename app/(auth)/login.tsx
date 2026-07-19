@@ -7,12 +7,9 @@ import { AuthScreenShell } from '@/components/AuthScreenShell';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedTextInput } from '@/components/ui/ThemedTextInput';
 import { GradientButton } from '@/components/ui/GradientButton';
-import { useLazyQuery } from '@apollo/client/react';
-import { GET_USER } from '@/graphql/queries';
 
 export default function LoginScreen() {
   const { fetchStatus, signIn } = useSignIn();
-  const [getUser, { error: getUserError }] = useLazyQuery(GET_USER);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,13 +38,6 @@ export default function LoginScreen() {
         return;
       }
 
-      await getUser({ variables: { email: email.trim() } });
-
-      if (getUserError) {
-        setErrorMessage(getUserError.message ?? 'Unable to find account with that email. Please check your email and try again.');
-        return;
-      }
-
       if (signIn.status === 'complete') {
         await signIn.finalize();
         router.replace('/(tabs)');
@@ -55,6 +45,7 @@ export default function LoginScreen() {
       }
 
       setErrorMessage('Additional sign-in steps are required. Please try again.');
+      signIn.reset();
     } catch (error: unknown) {
       const fallback = 'Unable to sign in with those credentials.';
       const clerkError = error as { message?: string };

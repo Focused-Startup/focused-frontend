@@ -11,7 +11,6 @@ import { GradientButton } from '@/components/ui/GradientButton';
 export default function ResetPasswordScreen() {
   const { fetchStatus, signIn } = useSignIn();
   const params = useLocalSearchParams<{ email?: string }>();
-  const email = Array.isArray(params.email) ? params.email[0] : params.email;
 
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');

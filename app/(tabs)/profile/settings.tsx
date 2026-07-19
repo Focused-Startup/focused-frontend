@@ -24,13 +24,9 @@ type Field = 'firstName' | 'lastName' | 'username' | 'password';
 export default function SettingsScreen() {
   const { user, isLoaded } = useUser();
   const { signOut } = useAuth();
-
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
   const [lastName, setLastName] = useState(user?.lastName ?? '');
   const [username, setUsername] = useState(user?.username ?? '');
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
 
   const [savingField, setSavingField] = useState<Field | null>(null);
   const [savedField, setSavedField] = useState<Field | null>(null);
@@ -52,19 +48,6 @@ export default function SettingsScreen() {
         await user.update({ lastName: lastName.trim() });
       } else if (field === 'username') {
         await user.update({ username: username.trim() });
-      } else if (field === 'password') {
-        if (newPassword !== confirmPassword) {
-          Alert.alert('Passwords do not match', 'New password and confirmation must be the same.');
-          return;
-        }
-        if (newPassword.length < 8) {
-          Alert.alert('Password too short', 'Password must be at least 8 characters.');
-          return;
-        }
-        await user.updatePassword({ currentPassword, newPassword });
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
       }
       flashSaved(field);
     } catch (error: unknown) {

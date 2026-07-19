@@ -38,7 +38,7 @@ export function AuthScreenShell({ logo = false, title = '', children }: AuthScre
               />
             </View>
             {logo && (
-                <FocusedLogo x={66} />
+                <FocusedLogo x={60} />
             )}
             <ThemedText type="subtitle" style={styles.title}>
               {title}
