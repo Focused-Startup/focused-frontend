@@ -2,32 +2,36 @@ import { useEffect, useState } from 'react';
 import { Modal, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedTextInput } from '@/components/ui/ThemedTextInput';
+import { DatePicker } from '@/components/ui/DatePicker';
 
 interface GoalsModalProps {
+	goalContent?: string;
 	isVisible: boolean;
 	onClose: () => void;
-	onSave: (goalContent: string) => Promise<void>;
+	onSave: (goalContent: string, dueDate: Date) => Promise<void>;
 }
 
-export default function GoalsModal({ isVisible, onClose, onSave }: GoalsModalProps) {
-	const [goalContent, setGoalContent] = useState('');
+export default function GoalsModal({ goalContent, isVisible, onClose, onSave }: GoalsModalProps) {
+	const [goal, setGoal] = useState(goalContent ?? '');
+	const [dueDate, setDueDate] = useState<Date | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
 
 	useEffect(() => {
 		if (isVisible) {
-			setGoalContent('');
+			setGoal('');
+			setDueDate(null);
 		}
 	}, [isVisible]);
 
 	const handleSave = async () => {
-		const trimmedGoal = goalContent.trim();
+		const trimmedGoal = goal.trim();
 		if (!trimmedGoal || isSaving) {
 			return;
 		}
 
 		try {
 			setIsSaving(true);
-			await onSave(trimmedGoal);
+			await onSave(trimmedGoal, dueDate ?? new Date());
 			onClose();
 		} finally {
 			setIsSaving(false);
@@ -43,14 +47,21 @@ export default function GoalsModal({ isVisible, onClose, onSave }: GoalsModalPro
 					</ThemedText>
 
 					<ThemedTextInput
-						value={goalContent}
-						onChangeText={setGoalContent}
+						value={goal}
+						onChangeText={setGoal}
 						placeholder="Enter your goal"
 						autoFocus
 						returnKeyType="done"
-						onSubmitEditing={handleSave}
 						editable={!isSaving}
 						style={styles.input}
+					/>
+
+					<DatePicker
+						value={dueDate}
+						onChange={setDueDate}
+						placeholder="Select a due date"
+						minimumDate={new Date()}
+						disabled={isSaving}
 					/>
 
 					<View style={styles.actionRow}>
@@ -59,9 +70,9 @@ export default function GoalsModal({ isVisible, onClose, onSave }: GoalsModalPro
 						</TouchableOpacity>
 
 						<TouchableOpacity
-							style={[styles.actionButton, styles.saveButton, (!goalContent.trim() || isSaving) && styles.disabledButton]}
+							style={[styles.actionButton, styles.saveButton, (!goal.trim() || isSaving) && styles.disabledButton]}
 							onPress={handleSave}
-							disabled={!goalContent.trim() || isSaving}
+							disabled={!goal.trim() || isSaving}
 						>
 							<ThemedText style={styles.saveText}>{isSaving ? 'Saving...' : 'Save'}</ThemedText>
 						</TouchableOpacity>

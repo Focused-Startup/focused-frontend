@@ -19,7 +19,29 @@ import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Answer, QuestionDetail } from '@/services/questionsApi';
+
+type Answer = {
+  id: string;
+  questionId: string;
+  authorId: string;
+  authorName: string;
+  authorImageUrl: string | null;
+  content: string;
+  createdAt: number;
+};
+
+type QuestionDetail = {
+  question: {
+    id: string;
+    authorId: string;
+    authorName: string;
+    authorImageUrl: string | null;
+    content: string;
+    createdAt: number;
+    answerCount: number;
+  };
+  answers: Answer[];
+};
 
 const MOCK_DETAIL_MAP: Record<string, QuestionDetail> = {
   '1': {
@@ -146,7 +168,7 @@ function getMockDetail(id: string): QuestionDetail {
   );
 }
 
-function AnswerCard({ answer, colorScheme }: { answer: Answer; colorScheme: 'light' | 'dark' }) {
+function AnswerCard({ answer, colorScheme }: { answer: Answer; colorScheme: 'light' | 'dark' | 'unspecified' }) {
   const colors = Colors[colorScheme];
   return (
     <ThemedView style={styles.answerCard}>

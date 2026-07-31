@@ -27,4 +27,14 @@ export const Colors = {
     tabIconSelected: tintColorDark,
     anchorText: tintColorLight,
   },
+  unspecified: {
+    text: '#11181C',
+    background: '#fff',
+    tint: tintColorLight,
+    icon: '#687076',
+    iconLight: '#b0b9c0',
+    tabIconDefault: '#687076',
+    tabIconSelected: tintColorLight,
+    anchorText: tintColorLight,
+  },
 };

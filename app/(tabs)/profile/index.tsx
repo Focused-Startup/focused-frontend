@@ -3,19 +3,20 @@ import { useUser } from '@clerk/expo';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import GoalsModal from '@/components/ui/GoalsModal';
+import NoteModal from '@/components/ui/NoteModal';
 import Swipeable from '@/components/ui/CompatSwipeable';
 import { Header } from '@/components/ui/Header';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
-
-type Note = { id: number; content: string; createdAt: number };
-type Goal = { id: number; content: string; isActive: boolean; createdAt: number };
+import { useAppUser, Note, Goal } from '@/contexts/UserContext';
+import { ADD_NOTE, UPDATE_NOTE, DELETE_NOTE, ADD_GOAL, DELETE_GOAL, UPDATE_GOAL } from '@/graphql/queries';
+import { useMutation } from '@apollo/client/react';
 
 const SUGGESTED_GOALS = [
   'Drink 8 glasses of water',
@@ -41,66 +42,134 @@ function ProfileField({ value }: { value: string }) {
 export default function ProfileScreen() {
   const { isHeaderVisible, handleScroll, scrollEventThrottle } = useScrollHeader();
   const { user, isLoaded } = useUser();
+  const { appUser, refetchUser } = useAppUser();
   const colorScheme = useColorScheme();
-
+  const [addNote] = useMutation(ADD_NOTE);
+  const [updateNote] = useMutation(UPDATE_NOTE);
+  const [deleteNoteMutation] = useMutation(DELETE_NOTE);
+  const [addGoal] = useMutation(ADD_GOAL);
+  const [deleteGoal] = useMutation(DELETE_GOAL);
+  const [updateGoal] = useMutation(UPDATE_GOAL);
   const [notesData, setNotesData] = useState<Note[]>([]);
   const [activeGoals, setActiveGoals] = useState<Goal[]>([]);
   const [completedGoalIds, setCompletedGoalIds] = useState<number[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
-  const [newNoteContent, setNewNoteContent] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState<number | undefined>(undefined);
   const [feeling, setFeeling] = useState('—');
   const [errorMessage, setErrorMessage] = useState('');
   const [activeTab, setActiveTab] = useState<'notes' | 'goals'>('notes');
 
-  const fetchNotes = useCallback(async () => {
-    // TODO: fetch notes from backend via GraphQL
-    setNotesData([]);
-  }, []);
-
-  const fetchGoals = useCallback(async () => {
-    // TODO: fetch goals from backend via GraphQL
-    setActiveGoals([]);
-  }, []);
-
-  const fetchNotesAndGoals = async () => {
-    // TODO: fetch notes and goals from RDS/Aurora via GraphQL
-    setFeeling('motivated');
-    await Promise.all([fetchNotes(), fetchGoals()]);
-  };
-
   useEffect(() => {
-    fetchNotesAndGoals();
-  }, [fetchNotesAndGoals]);
+    if (appUser) {
+      setFeeling(appUser.feeling ?? '—');
+      setNotesData(appUser.notes ?? []);
+      setActiveGoals(appUser.goals?.filter((goal) => goal.dueDate && new Date(goal.dueDate) > new Date()).map(goal => ({ ...goal, createdAt: new Date(goal.createdAt), updatedAt: new Date(goal.updatedAt) })) ?? []);
+      setCompletedGoalIds(appUser.goals?.filter((goal) => goal.status === 'completed').map((goal) => goal.id) ?? []);
+    }
+  }, [appUser]);
 
-  const saveNote = async () => {
-    if (!newNoteContent.trim()) return;
-    // TODO: save note via GraphQL mutation
-    setNewNoteContent('');
-    setIsNoteModalVisible(false);
+  const saveNote = async (content: string, noteId?: number) => {
+    try {
+      if (noteId !== undefined) {
+        const { data } = await updateNote({
+          variables: {
+            updateNoteId: noteId,
+            content,
+          },
+        });
+        if (data) {
+          refetchUser();
+        }
+      } else if (appUser?.id) {
+        const { data } = await addNote({
+          variables: {
+            authorId: appUser?.id,
+            content,
+          },
+        });
+        if (data) {
+          refetchUser();
+        }
+      } else {
+        setErrorMessage('User not found. Please try again later.');
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to save note.');
+    }
   };
 
   const deleteNote = async (id: number) => {
-    // TODO: delete note via GraphQL mutation
-    setNotesData((prev) => prev.filter((n) => n.id !== id));
+    try {
+      const { data } = await deleteNoteMutation({
+        variables: {
+          deleteNoteId: id,
+        },
+      });
+      if (data?.deleteNote?.success) {
+        refetchUser();
+      } else {
+        setErrorMessage(data?.deleteNote?.message ?? 'Failed to delete note.');
+      }
+    } catch (error) {
+      console.log('Error deleting note:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to delete note.');
+    }
   };
 
-  const addGoal = async (content: string) => {
-    if (activeGoals.some((goal) => goal.content === content)) return;
-    // TODO: add goal via GraphQL mutation
+  const addGoalHandler = async (content: string, dueDate: Date) => {
+    try {
+      if (appUser?.id) {
+        const { data } = await addGoal({
+          variables: {
+            userId: appUser.id,
+            content,
+            dueDate,
+          },
+        });
+        if (data) {
+          refetchUser();
+        }
+      } else {
+        setErrorMessage('User not found. Please try again later.');
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to add goal.');
+    }
   };
 
-  const removeGoal = async (id: number) => {
-    // TODO: remove goal via GraphQL mutation
-    setActiveGoals((prev) => prev.filter((g) => g.id !== id));
-    setCompletedGoalIds((previousIds) => previousIds.filter((goalId) => goalId !== id));
+  const removeGoalHandler = async (id: number) => {
+    try {
+      const { data } = await deleteGoal({
+        variables: {
+          deleteGoalId: id,
+        },
+      });
+      if (data?.deleteGoal?.success) {
+        refetchUser();
+      } else {
+        setErrorMessage(data?.deleteGoal?.message ?? 'Failed to delete goal.');
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to delete goal.');
+    }
   };
 
-  const toggleGoalComplete = (id: number) => {
-    setCompletedGoalIds((previousIds) =>
-      previousIds.includes(id) ? previousIds.filter((goalId) => goalId !== id) : [...previousIds, id]
-    );
+  const toggleGoalComplete = async (id: number) => {
+    try {
+      const { data } = await updateGoal({
+        variables: {
+          updateGoalId: id,
+          status: completedGoalIds.includes(id) ? 'active' : 'completed',
+        },
+      });
+      if (data) {
+        refetchUser();
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to update goal status.');
+    }
   };
 
   const renderRightActions = (id: number) => (
@@ -109,8 +178,20 @@ export default function ProfileScreen() {
     </TouchableOpacity>
   );
 
+  const renderLeftActions = (id: number) => (
+    <TouchableOpacity
+      style={styles.editButton}
+      onPress={() => {
+        setEditingNoteId(id);
+        setIsNoteModalVisible(true);
+      }}
+    >
+      <Ionicons name="pencil-outline" size={24} color="white" />
+    </TouchableOpacity>
+  );
+
   const renderGoalActions = (id: number) => (
-    <TouchableOpacity style={styles.deleteButton} onPress={() => removeGoal(id)}>
+    <TouchableOpacity style={styles.deleteButton} onPress={() => removeGoalHandler(id)}>
       <Ionicons name="trash-outline" size={24} color="white" />
     </TouchableOpacity>
   );
@@ -133,6 +214,7 @@ export default function ProfileScreen() {
         <Header isVisible={isHeaderVisible} title={user?.username ?? 'Profile'} headerRight={headerRight} headerLeft={headerLeft} />
         <ScrollView
           style={styles.scrollContainer}
+          contentContainerStyle={styles.scrollContent}
           onScroll={handleScroll}
           scrollEventThrottle={scrollEventThrottle}
           showsVerticalScrollIndicator={false}
@@ -208,20 +290,20 @@ export default function ProfileScreen() {
                   )}
 
                   {notesData.map((note) => (
-                    <Swipeable key={note.id} renderRightActions={() => renderRightActions(note.id)}>
-                      <ThemedView style={styles.item}>
-                        <ThemedText style={styles.noteContent}>{note.content}</ThemedText>
-                        <ThemedText style={styles.noteDate}>
-                          {new Date(note.createdAt).toLocaleDateString(undefined, {
-                            weekday: 'short',
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </ThemedText>
-                      </ThemedView>
+                    <Swipeable key={note.id} renderRightActions={() => renderRightActions(note.id)} renderLeftActions={() => renderLeftActions(note.id)}>
+                        <ThemedView style={styles.item}>
+                          <ThemedText style={styles.noteContent}>{note.content}</ThemedText>
+                          <ThemedText style={styles.noteDate}>
+                            {new Date(note.createdAt).toLocaleDateString(undefined, {
+                              weekday: 'short',
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </ThemedText>
+                        </ThemedView>
                     </Swipeable>
                   ))}
                 </>
@@ -254,7 +336,7 @@ export default function ProfileScreen() {
                       if (isAdded) return null;
 
                       return (
-                        <TouchableOpacity key={index} style={styles.suggestionCard} onPress={() => addGoal(suggestion)}>
+                        <TouchableOpacity key={index} style={styles.suggestionCard} onPress={() => setIsModalVisible(true)} activeOpacity={0.8}>
                           <Ionicons name="add-circle-outline" size={20} color="#007AFF" />
                           <ThemedText style={styles.suggestionText}>{suggestion}</ThemedText>
                         </TouchableOpacity>
@@ -275,7 +357,7 @@ export default function ProfileScreen() {
                 style={styles.pickerOption}
                 onPress={() => {
                   setIsPickerVisible(false);
-                  setNewNoteContent('');
+                  setEditingNoteId(undefined);
                   setIsNoteModalVisible(true);
                 }}
               >
@@ -300,40 +382,24 @@ export default function ProfileScreen() {
         </Modal>
 
         {/* Note entry modal */}
-        <Modal
-          visible={isNoteModalVisible}
-          animationType="slide"
-          transparent
-          onRequestClose={() => setIsNoteModalVisible(false)}
-        >
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.noteModalContainer}>
-            <View style={styles.noteModalContent}>
-              <View style={styles.noteModalHeader}>
-                <TouchableOpacity onPress={() => setIsNoteModalVisible(false)}>
-                  <ThemedText style={styles.noteModalAction}>Cancel</ThemedText>
-                </TouchableOpacity>
-                <ThemedText type="subtitle">New Note</ThemedText>
-                <TouchableOpacity onPress={saveNote} disabled={!newNoteContent.trim()}>
-                  <ThemedText style={[styles.noteModalAction, !newNoteContent.trim() && styles.disabledAction]}>Save</ThemedText>
-                </TouchableOpacity>
-              </View>
-              <TextInput
-                style={styles.noteModalInput}
-                multiline
-                placeholder="Write your thoughts..."
-                value={newNoteContent}
-                onChangeText={setNewNoteContent}
-                autoFocus
-              />
-            </View>
-          </KeyboardAvoidingView>
-        </Modal>
+        {isNoteModalVisible && (
+          <NoteModal
+            isVisible={isNoteModalVisible}
+            onClose={() => {
+              setIsNoteModalVisible(false);
+              setEditingNoteId(undefined);
+            }}
+            noteId={editingNoteId}
+            initialContent={notesData.find((n) => n.id === editingNoteId)?.content ?? ''}
+            onSave={saveNote}
+          />
+        )}
 
         {isModalVisible && (
           <GoalsModal
             isVisible={isModalVisible}
             onClose={() => setIsModalVisible(false)}
-            onSave={async (goalContent) => addGoal(goalContent)}
+            onSave={async (goalContent, dueDate) => addGoalHandler(goalContent, dueDate)}
           />
         )}
       </SafeAreaView>
@@ -349,7 +415,11 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   content: {
+    flex: 1,
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 100,
@@ -510,6 +580,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: 16,
   },
+  editButton: {
+    backgroundColor: '#007AFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 80,
+    marginBottom: 16,
+    borderRadius: 16,
+  },
   goalCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -578,43 +656,6 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: '#e0e0e0',
     marginHorizontal: 16,
-  },
-  noteModalContainer: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  noteModalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: '90%',
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  noteModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  noteModalAction: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  disabledAction: {
-    opacity: 0.4,
-  },
-  noteModalInput: {
-    flex: 1,
-    fontSize: 17,
-    lineHeight: 26,
-    textAlignVertical: 'top',
-    color: '#1f2937',
   },
   headerButtons: {
     flexDirection: 'row',

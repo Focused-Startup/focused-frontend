@@ -19,9 +19,8 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { Header } from '@/components/ui/Header';
 import { ThemedText } from '@/components/ThemedText';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
-import { Question } from '@/services/questionsApi';
 
-const MOCK_QUESTIONS: Question[] = [
+const MOCK_QUESTIONS = [
   {
     id: '1',
     authorId: 'user_1',
@@ -65,7 +64,7 @@ export default function QuestionsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questions, setQuestions] = useState<typeof MOCK_QUESTIONS>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPostModalVisible, setIsPostModalVisible] = useState(false);
@@ -96,7 +95,7 @@ export default function QuestionsScreen() {
       setIsSubmitting(true);
       // TODO: replace with real API call: await questionsApi.create(newQuestion.trim(), token)
       await new Promise((resolve) => setTimeout(resolve, 300));
-      const mockNew: Question = {
+      const mockNew: typeof MOCK_QUESTIONS[number] = {
         id: String(Date.now()),
         authorId: 'me',
         authorName: 'You',
