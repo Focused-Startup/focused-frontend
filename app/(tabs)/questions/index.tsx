@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -19,92 +19,56 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { Header } from '@/components/ui/Header';
 import { ThemedText } from '@/components/ThemedText';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
-
-const MOCK_QUESTIONS = [
-  {
-    id: '1',
-    authorId: 'user_1',
-    authorName: 'Alex Johnson',
-    authorImageUrl: null,
-    content: 'What\'s the best book you\'ve read this year?',
-    createdAt: Date.now() - 1000 * 60 * 60 * 2,
-    answerCount: 3,
-  },
-  {
-    id: '2',
-    authorId: 'user_2',
-    authorName: 'Sam Rivera',
-    authorImageUrl: null,
-    content: 'If you could live anywhere in the world for a year, where would you go?',
-    createdAt: Date.now() - 1000 * 60 * 60 * 24,
-    answerCount: 5,
-  },
-  {
-    id: '3',
-    authorId: 'user_3',
-    authorName: 'Jordan Lee',
-    authorImageUrl: null,
-    content: 'What habit has made the biggest positive impact on your life?',
-    createdAt: Date.now() - 1000 * 60 * 60 * 48,
-    answerCount: 1,
-  },
-  {
-    id: '4',
-    authorId: 'user_4',
-    authorName: 'Taylor Kim',
-    authorImageUrl: null,
-    content: 'What\'s something you\'re proud of that most people don\'t know about?',
-    createdAt: Date.now() - 1000 * 60 * 60 * 72,
-    answerCount: 0,
-  },
-];
+import { useAppUser } from '@/contexts/UserContext';
+import { ADD_QUESTION } from '@/graphql/queries';
+import { useMutation } from '@apollo/client/react';
+import type { Response, Question } from '@/contexts/UserContext';
 
 export default function QuestionsScreen() {
   const { isHeaderVisible, handleScroll, scrollEventThrottle } = useScrollHeader();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-
-  const [questions, setQuestions] = useState<typeof MOCK_QUESTIONS>([]);
+  const { appUser, refetchUser } = useAppUser();
+  const [addQuestion] = useMutation(ADD_QUESTION);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPostModalVisible, setIsPostModalVisible] = useState(false);
   const [newQuestion, setNewQuestion] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const fetchQuestions = useCallback(async () => {
-    try {
-      setError(null);
-      // TODO: replace with real API call: await questionsApi.list(token)
-      await new Promise((resolve) => setTimeout(resolve, 400));
-      setQuestions(MOCK_QUESTIONS);
-    } catch (err) {
-      console.error('Failed to fetch questions:', err);
-      setError('Could not load questions. Tap retry to try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchQuestions();
-  }, [fetchQuestions]);
+    setIsLoading(true);
+    setError(null);
+    if (appUser) {
+      setQuestions(appUser.questions ?? []);
+    } else {
+      setQuestions([]);
+    }
+    setIsLoading(false);
+  }, [appUser]);
 
   const postQuestion = async () => {
     if (!newQuestion.trim() || isSubmitting) return;
     try {
       setIsSubmitting(true);
-      // TODO: replace with real API call: await questionsApi.create(newQuestion.trim(), token)
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      const mockNew: typeof MOCK_QUESTIONS[number] = {
-        id: String(Date.now()),
-        authorId: 'me',
-        authorName: 'You',
-        authorImageUrl: null,
-        content: newQuestion.trim(),
-        createdAt: Date.now(),
-        answerCount: 0,
-      };
-      setQuestions((prev) => [mockNew, ...prev]);
+      
+      if (!appUser) {
+        throw new Error('User not found. Please log in again.');
+      }
+
+      const { data } = await addQuestion({
+        variables: {
+          authorId: appUser?.id,
+          body: newQuestion.trim(),
+        },
+      });
+
+      if (!data || !data.addQuestion) {
+        throw new Error('Failed to post question. Please try again.');
+      }
+
+      setQuestions((prevQuestions) => [...prevQuestions, data.addQuestion]);
       setNewQuestion('');
       setIsPostModalVisible(false);
     } catch (err) {
@@ -136,7 +100,7 @@ export default function QuestionsScreen() {
             ) : error ? (
               <View style={styles.centerState}>
                 <ThemedText style={styles.errorText}>{error}</ThemedText>
-                <TouchableOpacity onPress={fetchQuestions} style={styles.retryButton}>
+                <TouchableOpacity onPress={refetchUser} style={styles.retryButton}>
                   <ThemedText style={[styles.retryText, { color: colors.tint }]}>Retry</ThemedText>
                 </TouchableOpacity>
               </View>
@@ -154,13 +118,6 @@ export default function QuestionsScreen() {
                   activeOpacity={0.8}
                 >
                   <View style={styles.questionHeader}>
-                    {question.authorImageUrl ? (
-                      <Image source={{ uri: question.authorImageUrl }} style={styles.avatar} />
-                    ) : (
-                      <View style={[styles.avatarPlaceholder, { backgroundColor: colorScheme === 'dark' ? '#2a2f35' : '#eef2f6' }]}>
-                        <Ionicons name="person" size={16} color={colors.iconLight} />
-                      </View>
-                    )}
                     <View style={styles.questionMeta}>
                       <ThemedText style={styles.authorName}>{question.authorName}</ThemedText>
                       <ThemedText style={styles.timestamp}>
@@ -171,11 +128,11 @@ export default function QuestionsScreen() {
                       </ThemedText>
                     </View>
                   </View>
-                  <ThemedText style={styles.questionContent}>{question.content}</ThemedText>
+                  <ThemedText style={styles.questionContent}>{question.body}</ThemedText>
                   <View style={styles.questionFooter}>
                     <Ionicons name="chatbubble-outline" size={14} color={colors.iconLight} />
                     <ThemedText style={styles.answerCount}>
-                      {question.answerCount} {question.answerCount === 1 ? 'answer' : 'answers'}
+                      {question.responses.length} {question.responses.length === 1 ? 'answer' : 'answers'}
                     </ThemedText>
                   </View>
                 </TouchableOpacity>

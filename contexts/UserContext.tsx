@@ -6,6 +6,16 @@ import { CREATE_USER, GET_USER, UPDATE_USER } from '@/graphql/queries';
 export type GoalStatus = 'active' | 'completed' | 'deleted' | 'inactive';
 export type Note = { id: number; content: string; createdAt: Date; updatedAt: Date; authorId?: number };
 export type Goal = { id: number; content: string; status: GoalStatus; createdAt: Date; dueDate?: Date; updatedAt: Date; userId?: number };
+export type Response = { id: string; authorId: string; questionId: string; body: string; createdAt: Date; updatedAt: Date };
+export type Question = {
+  id: number;
+  authorId: number;
+  authorName?: string;
+  body: string;
+  createdAt: Date;
+  updatedAt: Date;
+  responses: Response[];
+};
 
 export interface AppUser {
   id: number;
@@ -18,7 +28,10 @@ export interface AppUser {
   goals: Array<Goal>;
   createdAt: Date;
   updatedAt: Date;
+  questions: Array<Question>;
 }
+
+const SYNC_INTERVAL_MS = 60 * 1000;
 
 interface UserContextValue {
   appUser: AppUser | null;
@@ -31,7 +44,7 @@ const UserContext = createContext<UserContextValue>({
   appUser: null,
   loading: false,
   errorMessage: null,
-  refetchUser: () => {},
+  refetchUser: () => {}
 });
 
 export function UserProvider({ children }: { children: ReactNode }) {
@@ -48,23 +61,24 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const lastName = clerkUser?.lastName;
 
   const updateAndFetchData = async () => {
+    try {
       if (isSignedIn && clerkUser && primaryEmail) {
-        const { data, error } = await fetchUser({ variables: { email: appUser?.email || primaryEmail } });
-        if (error) {
-          setErrorMessage(error.message ?? 'Failed to load user.');
-          return;
-        }
+        const { data } = await fetchUser({ variables: { email: appUser?.email || primaryEmail } });
 
         let user = data?.user ?? null;
 
         if (!user) {
           // First sign-in: no backend user exists yet, so create one.
-          await createUser({
+          const { data: createdUserData, error: createError } = await createUser({
             variables: {
               email: primaryEmail,
               username: clerkUser.username ?? '',
             },
           });
+          if (createError) {
+            setErrorMessage(createError.message ?? 'Failed to create user.');
+            return;
+          }
           const { data: refetchedData, error: refetchError } = await fetchUser({
             variables: { email: primaryEmail },
           });
@@ -96,7 +110,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setAppUser(null);
         setErrorMessage(null);
       }
-    };
+    } catch (error: any) {
+      setErrorMessage(error.message ?? 'Failed to load user.');
+    }
+  };
   
   const refetchUser = async () => {
     const { data, error: refetchError } = await refetch();
@@ -113,8 +130,27 @@ export function UserProvider({ children }: { children: ReactNode }) {
     updateAndFetchData();
   }, [isSignedIn, clerkUser]);
 
+  // Periodically sync with the backend so drift from local-only updates
+  // (or changes made elsewhere) eventually gets reconciled.
+  useEffect(() => {
+    if (!isSignedIn) return;
+
+    const intervalId = setInterval(() => {
+      refetchUser();
+    }, SYNC_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [isSignedIn]);
+
   return (
-    <UserContext.Provider value={{ appUser, loading, errorMessage, refetchUser }}>
+    <UserContext.Provider
+      value={{
+        appUser,
+        loading,
+        errorMessage,
+        refetchUser
+      }}
+    >
       {children}
     </UserContext.Provider>
   );

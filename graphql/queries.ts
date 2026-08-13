@@ -1,6 +1,6 @@
 import { gql } from '@apollo/client';
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
-import type { AppUser, GoalStatus, Note } from '@/contexts/UserContext';
+import type { AppUser, GoalStatus, Note, Response } from '@/contexts/UserContext';
 
 type CreateUserData = { regUser: Pick<AppUser, 'email' | 'firstName' | 'lastName' | 'createdAt'> };
 type CreateUserVars = { username: string; email: string };
@@ -52,14 +52,30 @@ export const GET_USER: TypedDocumentNode<GetUserData, GetUserVars> = gql`
         status
         updatedAt
       }
+      questions {
+        id
+        authorId
+        authorName
+        body
+        createdAt
+        updatedAt
+        responses {
+          id
+          authorId
+          questionId
+          body
+          createdAt
+          updatedAt
+        }
+      }
   }
 }`;
 
-type UpdateUserData = { updateUser: Pick<AppUser, 'id' | 'email' | 'username' | 'firstName' | 'lastName' | 'createdAt' | 'updatedAt'> };
-type UpdateUserVars = { id: number; username?: string; email?: string; firstName?: string; lastName?: string };
+type UpdateUserData = { updateUser: Pick<AppUser, 'id' | 'email' | 'username' | 'firstName' | 'lastName' | 'createdAt' | 'updatedAt' | 'feeling'> };
+type UpdateUserVars = { id: number; username?: string; email?: string; firstName?: string; lastName?: string; feeling?: string };
 export const UPDATE_USER: TypedDocumentNode<UpdateUserData, UpdateUserVars> = gql`
-  mutation UpdateUser($id: Int!, $username: String, $email: String, $firstName: String, $lastName: String) {
-    updateUser(id: $id, username: $username, email: $email, firstName: $firstName, lastName: $lastName) {
+  mutation UpdateUser($id: Int!, $username: String, $email: String, $firstName: String, $lastName: String, $feeling: String) {
+    updateUser(id: $id, username: $username, email: $email, firstName: $firstName, lastName: $lastName, feeling: $feeling) {
       id
       email
       username
@@ -67,6 +83,7 @@ export const UPDATE_USER: TypedDocumentNode<UpdateUserData, UpdateUserVars> = gq
       lastName
       createdAt
       updatedAt
+      feeling
   }
 }`;
 
@@ -145,6 +162,29 @@ export const UPDATE_GOAL: TypedDocumentNode<UpdateGoalData, UpdateGoalVars> = gq
       createdAt
       dueDate
       updatedAt
+    }
+  }
+`;
+
+type AddQuestionData = { addQuestion: { id: number; authorId: number; body: string; createdAt: Date; updatedAt: Date; responses: Response[] } };
+type AddQuestionVars = { authorId: number; body: string };
+export const ADD_QUESTION: TypedDocumentNode<AddQuestionData, AddQuestionVars> = gql`
+  mutation AddQuestion($authorId: Int!, $body: String!) {
+    addQuestion(authorId: $authorId, body: $body) {
+      id
+      authorId
+      authorName
+      body
+      createdAt
+      updatedAt
+      responses {
+        id
+        authorId
+        questionId
+        body
+        createdAt
+        updatedAt
+      }
     }
   }
 `;

@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useUser } from '@clerk/expo';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useState, useCallback } from 'react';
-import { Modal, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -14,22 +14,15 @@ import { Header } from '@/components/ui/Header';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { useScrollHeader } from '@/hooks/useScrollHeader';
-import { useAppUser, Note, Goal } from '@/contexts/UserContext';
-import { ADD_NOTE, UPDATE_NOTE, DELETE_NOTE, ADD_GOAL, DELETE_GOAL, UPDATE_GOAL } from '@/graphql/queries';
+import { useAppUser, Note, Goal, GoalStatus } from '@/contexts/UserContext';
+import { ADD_NOTE, UPDATE_NOTE, DELETE_NOTE, ADD_GOAL, DELETE_GOAL, UPDATE_GOAL, UPDATE_USER } from '@/graphql/queries';
 import { useMutation } from '@apollo/client/react';
+import { SUGGESTED_GOALS } from '@/constants/Goals';
 
-const SUGGESTED_GOALS = [
-  'Drink 8 glasses of water',
-  'Read 10 pages',
-  'Exercise for 30 minutes',
-  'Meditate for 10 minutes',
-  'Sleep 8 hours',
-  'Eat a healthy breakfast',
-  'Walk 10,000 steps',
-  'Learn something new',
-  'No sugar today',
-  'Call a friend/family member',
-];
+const shuffleOneLiner = (arr: string[]) => arr
+  .map(value => ({ value, sort: Math.random() }))
+  .sort((a, b) => a.sort - b.sort)
+  .map(({ value }) => value);
 
 function ProfileField({ value }: { value: string }) {
   return (
@@ -42,7 +35,7 @@ function ProfileField({ value }: { value: string }) {
 export default function ProfileScreen() {
   const { isHeaderVisible, handleScroll, scrollEventThrottle } = useScrollHeader();
   const { user, isLoaded } = useUser();
-  const { appUser, refetchUser } = useAppUser();
+  const { appUser } = useAppUser();
   const colorScheme = useColorScheme();
   const [addNote] = useMutation(ADD_NOTE);
   const [updateNote] = useMutation(UPDATE_NOTE);
@@ -50,6 +43,7 @@ export default function ProfileScreen() {
   const [addGoal] = useMutation(ADD_GOAL);
   const [deleteGoal] = useMutation(DELETE_GOAL);
   const [updateGoal] = useMutation(UPDATE_GOAL);
+  const [updateUser] = useMutation(UPDATE_USER);
   const [notesData, setNotesData] = useState<Note[]>([]);
   const [activeGoals, setActiveGoals] = useState<Goal[]>([]);
   const [completedGoalIds, setCompletedGoalIds] = useState<number[]>([]);
@@ -57,13 +51,21 @@ export default function ProfileScreen() {
   const [isPickerVisible, setIsPickerVisible] = useState(false);
   const [isNoteModalVisible, setIsNoteModalVisible] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<number | undefined>(undefined);
-  const [feeling, setFeeling] = useState('—');
+  const [feeling, setFeeling] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [activeTab, setActiveTab] = useState<'notes' | 'goals'>('notes');
+  const [shuffledGoals, setShuffledGoals] = useState<string[]>([]);
+  const [dueDate, setDueDate] = useState<Date | null>(null);
+  const [goalContent, setGoalContent] = useState<string>('');
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    setShuffledGoals(shuffleOneLiner(SUGGESTED_GOALS).slice(0, 5));
+  }, []);
 
   useEffect(() => {
     if (appUser) {
-      setFeeling(appUser.feeling ?? '—');
+      setFeeling(appUser.feeling ?? '');
       setNotesData(appUser.notes ?? []);
       setActiveGoals(appUser.goals?.filter((goal) => goal.dueDate && new Date(goal.dueDate) > new Date()).map(goal => ({ ...goal, createdAt: new Date(goal.createdAt), updatedAt: new Date(goal.updatedAt) })) ?? []);
       setCompletedGoalIds(appUser.goals?.filter((goal) => goal.status === 'completed').map((goal) => goal.id) ?? []);
@@ -79,8 +81,8 @@ export default function ProfileScreen() {
             content,
           },
         });
-        if (data) {
-          refetchUser();
+        if (data?.updateNote) {
+          setNotesData((prevNotes) => prevNotes.map((n) => (n.id === data.updateNote.id ? data.updateNote : n)));
         }
       } else if (appUser?.id) {
         const { data } = await addNote({
@@ -89,8 +91,8 @@ export default function ProfileScreen() {
             content,
           },
         });
-        if (data) {
-          refetchUser();
+        if (data?.addNote) {
+          setNotesData((prevNotes) => [...prevNotes, data.addNote]);
         }
       } else {
         setErrorMessage('User not found. Please try again later.');
@@ -108,7 +110,7 @@ export default function ProfileScreen() {
         },
       });
       if (data?.deleteNote?.success) {
-        refetchUser();
+        setNotesData((prevNotes) => prevNotes.filter((n) => n.id !== id));
       } else {
         setErrorMessage(data?.deleteNote?.message ?? 'Failed to delete note.');
       }
@@ -128,14 +130,33 @@ export default function ProfileScreen() {
             dueDate,
           },
         });
-        if (data) {
-          refetchUser();
+        if (data?.addGoal) {
+          setActiveGoals((prevGoals) => [...prevGoals, { ...data.addGoal, status: data.addGoal.status as GoalStatus, userId: appUser.id }]);
         }
       } else {
         setErrorMessage('User not found. Please try again later.');
       }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to add goal.');
+    }
+  };
+
+  const updateFeelingHandler = async (newFeeling: string) => {
+    try {
+      if (appUser?.id) {
+        const { data } = await updateUser({
+          variables: {
+            id: appUser.id,
+            feeling: newFeeling,
+          },
+        });
+        if (data?.updateUser) {
+          setFeeling(data.updateUser.feeling as string);
+        }
+        setIsEditing(false);
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to update feeling.');
     }
   };
 
@@ -147,13 +168,19 @@ export default function ProfileScreen() {
         },
       });
       if (data?.deleteGoal?.success) {
-        refetchUser();
+        setActiveGoals((prevGoals) => prevGoals.filter((g) => g.id !== id));
       } else {
         setErrorMessage(data?.deleteGoal?.message ?? 'Failed to delete goal.');
       }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to delete goal.');
     }
+  };
+
+  const handleSuggestedGoal = async (suggestion: string) => {
+    setDueDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)); // Set due date to one week from now
+    setGoalContent(suggestion);
+    setIsModalVisible(true);
   };
 
   const toggleGoalComplete = async (id: number) => {
@@ -164,8 +191,8 @@ export default function ProfileScreen() {
           status: completedGoalIds.includes(id) ? 'active' : 'completed',
         },
       });
-      if (data) {
-        refetchUser();
+      if (data?.updateGoal) {
+        setActiveGoals((prevGoals) => prevGoals.map((g) => (g.id === data.updateGoal.id ? { ...g, ...data.updateGoal, status: data.updateGoal.status as GoalStatus } : g)));
       }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to update goal status.');
@@ -241,8 +268,19 @@ export default function ProfileScreen() {
                       <ProfileField value={user?.lastName ?? '—'} />
                     </ThemedView>
                     <ThemedView style={{padding: 4, flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6}}>
-                      <ThemedText>I am feeling: {feeling}</ThemedText>
-                      <Ionicons name="pencil-outline" size={16} color="#007AFF" onPress={() => setFeeling('crazy')} />
+                      <ThemedText>I am feeling: </ThemedText>
+                      {isEditing ? (
+                        <TextInput
+                          value={feeling}
+                          onChangeText={setFeeling}
+                          onBlur={() => updateFeelingHandler(feeling)}
+                          style={{borderBottomWidth: 1, borderBottomColor: '#007AFF', flex: 1, paddingVertical: 2}}
+                          autoFocus
+                        />
+                      ) : (
+                        <ThemedText>{feeling ?? '—'}</ThemedText>
+                      )}
+                      <Ionicons name="pencil-outline" size={16} color="#007AFF" onPress={() => setIsEditing(!isEditing)} />
                     </ThemedView>
                   </ThemedView>
                   </ThemedView>
@@ -331,12 +369,12 @@ export default function ProfileScreen() {
                   )}
 
                   <ThemedView style={styles.suggestionsGrid}>
-                    {SUGGESTED_GOALS.map((suggestion, index) => {
+                    {shuffledGoals.map((suggestion, index) => {
                       const isAdded = activeGoals.some((goal) => goal.content === suggestion);
                       if (isAdded) return null;
 
                       return (
-                        <TouchableOpacity key={index} style={styles.suggestionCard} onPress={() => setIsModalVisible(true)} activeOpacity={0.8}>
+                        <TouchableOpacity key={index} style={styles.suggestionCard} onPress={() => handleSuggestedGoal(suggestion)} activeOpacity={0.8}>
                           <Ionicons name="add-circle-outline" size={20} color="#007AFF" />
                           <ThemedText style={styles.suggestionText}>{suggestion}</ThemedText>
                         </TouchableOpacity>
@@ -400,6 +438,8 @@ export default function ProfileScreen() {
             isVisible={isModalVisible}
             onClose={() => setIsModalVisible(false)}
             onSave={async (goalContent, dueDate) => addGoalHandler(goalContent, dueDate)}
+            goalContent={goalContent}
+            initialDueDate={dueDate}
           />
         )}
       </SafeAreaView>

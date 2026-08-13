@@ -1,0 +1,17 @@
+export const SUGGESTED_GOALS = [
+  'Drink 8 glasses of water',
+  'Read 10 pages',
+  'Exercise for 30 minutes',
+  'Meditate for 10 minutes',
+  'Sleep 8 hours',
+  'Eat a healthy breakfast',
+  'Walk 10,000 steps',
+  'Learn something new',
+  'No sugar today',
+  'Call a friend/family member',
+  'Walk the dog for 30 minutes',
+  'Write in a journal',
+  'Practice gratitude',
+  'Declutter a small area',
+  'Plan your day',
+];

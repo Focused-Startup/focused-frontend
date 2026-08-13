@@ -6,22 +6,23 @@ import { DatePicker } from '@/components/ui/DatePicker';
 
 interface GoalsModalProps {
 	goalContent?: string;
+	initialDueDate: Date | null;
 	isVisible: boolean;
 	onClose: () => void;
 	onSave: (goalContent: string, dueDate: Date) => Promise<void>;
 }
 
-export default function GoalsModal({ goalContent, isVisible, onClose, onSave }: GoalsModalProps) {
+export default function GoalsModal({ goalContent, initialDueDate, isVisible, onClose, onSave }: GoalsModalProps) {
 	const [goal, setGoal] = useState(goalContent ?? '');
-	const [dueDate, setDueDate] = useState<Date | null>(null);
+	const [dueDate, setDueDate] = useState<Date | null>(initialDueDate ?? null);
 	const [isSaving, setIsSaving] = useState(false);
 
 	useEffect(() => {
 		if (isVisible) {
-			setGoal('');
-			setDueDate(null);
+			setGoal(goalContent ?? '');
+			setDueDate(initialDueDate ?? null);
 		}
-	}, [isVisible]);
+	}, [isVisible, goalContent, initialDueDate]);
 
 	const handleSave = async () => {
 		const trimmedGoal = goal.trim();
