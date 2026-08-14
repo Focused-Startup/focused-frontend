@@ -89,9 +89,6 @@ export default function HomeScreen() {
   const [isToolbarExpanded, setIsToolbarExpanded] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const { appUser } = useAppUser();
-  const { data, loading, error } = useQuery(MY_CANVAS_QUERY, {
-    variables: { ownerId: appUser?.id },
-  });
 
   const openModal = () => setIsModalVisible(true);
   const closeModal = () => setIsModalVisible(false);

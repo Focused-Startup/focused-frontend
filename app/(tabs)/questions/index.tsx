@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -22,7 +21,7 @@ import { useScrollHeader } from '@/hooks/useScrollHeader';
 import { useAppUser } from '@/contexts/UserContext';
 import { ADD_QUESTION } from '@/graphql/queries';
 import { useMutation } from '@apollo/client/react';
-import type { Response, Question } from '@/contexts/UserContext';
+import type { Question } from '@/contexts/UserContext';
 
 export default function QuestionsScreen() {
   const { isHeaderVisible, handleScroll, scrollEventThrottle } = useScrollHeader();

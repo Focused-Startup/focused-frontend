@@ -188,3 +188,33 @@ export const ADD_QUESTION: TypedDocumentNode<AddQuestionData, AddQuestionVars> =
     }
   }
 `;
+
+type GetFriendsData = { friends: { success: boolean; total: number; users: AppUser[] } };
+type GetFriendsVars = { id: number };
+export const GET_FRIENDS: TypedDocumentNode<GetFriendsData, GetFriendsVars> = gql`
+  query GetFriends($id: Int!) {
+    friends(id: $id) {
+      users {
+        id
+        username
+        firstName
+        lastName
+      }
+    }
+  }
+`;
+
+type AddResponseData = { addResponse: Response };
+type AddResponseVars = { authorId: number; questionId: number; body: string };
+export const ADD_RESPONSE: TypedDocumentNode<AddResponseData, AddResponseVars> = gql`
+  mutation AddResponse($authorId: Int!, $questionId: Int!, $body: String!) {
+    addResponse(authorId: $authorId, questionId: $questionId, body: $body) {
+      id
+      authorId
+      questionId
+      body
+      createdAt
+      updatedAt
+    }
+  }
+`;

@@ -1,6 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
-import { useUser } from '@clerk/expo';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -19,186 +17,20 @@ import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-
-type Answer = {
-  id: string;
-  questionId: string;
-  authorId: string;
-  authorName: string;
-  authorImageUrl: string | null;
-  content: string;
-  createdAt: number;
-};
-
-type QuestionDetail = {
-  question: {
-    id: string;
-    authorId: string;
-    authorName: string;
-    authorImageUrl: string | null;
-    content: string;
-    createdAt: number;
-    answerCount: number;
-  };
-  answers: Answer[];
-};
-
-const MOCK_DETAIL_MAP: Record<string, QuestionDetail> = {
-  '1': {
-    question: {
-      id: '1',
-      authorId: 'user_1',
-      authorName: 'Alex Johnson',
-      authorImageUrl: null,
-      content: "What's the best book you've read this year?",
-      createdAt: Date.now() - 1000 * 60 * 60 * 2,
-      answerCount: 3,
-    },
-    answers: [
-      {
-        id: 'a1',
-        questionId: '1',
-        authorId: 'user_2',
-        authorName: 'Sam Rivera',
-        authorImageUrl: null,
-        content: 'Atomic Habits by James Clear — completely changed how I think about routines.',
-        createdAt: Date.now() - 1000 * 60 * 90,
-      },
-      {
-        id: 'a2',
-        questionId: '1',
-        authorId: 'user_3',
-        authorName: 'Jordan Lee',
-        authorImageUrl: null,
-        content: 'The Almanack of Naval Ravikant. Short but incredibly dense with good ideas.',
-        createdAt: Date.now() - 1000 * 60 * 45,
-      },
-      {
-        id: 'a3',
-        questionId: '1',
-        authorId: 'user_4',
-        authorName: 'Taylor Kim',
-        authorImageUrl: null,
-        content: 'Project Hail Mary by Andy Weir — couldn\'t put it down.',
-        createdAt: Date.now() - 1000 * 60 * 20,
-      },
-    ],
-  },
-  '2': {
-    question: {
-      id: '2',
-      authorId: 'user_2',
-      authorName: 'Sam Rivera',
-      authorImageUrl: null,
-      content: 'If you could live anywhere in the world for a year, where would you go?',
-      createdAt: Date.now() - 1000 * 60 * 60 * 24,
-      answerCount: 5,
-    },
-    answers: [
-      {
-        id: 'a4',
-        questionId: '2',
-        authorId: 'user_1',
-        authorName: 'Alex Johnson',
-        authorImageUrl: null,
-        content: 'Lisbon, Portugal. Amazing food, great weather, affordable, and the people are so welcoming.',
-        createdAt: Date.now() - 1000 * 60 * 60 * 20,
-      },
-      {
-        id: 'a5',
-        questionId: '2',
-        authorId: 'user_3',
-        authorName: 'Jordan Lee',
-        authorImageUrl: null,
-        content: 'Tokyo — I\'d love to spend a full year really exploring the different neighborhoods.',
-        createdAt: Date.now() - 1000 * 60 * 60 * 18,
-      },
-    ],
-  },
-  '3': {
-    question: {
-      id: '3',
-      authorId: 'user_3',
-      authorName: 'Jordan Lee',
-      authorImageUrl: null,
-      content: 'What habit has made the biggest positive impact on your life?',
-      createdAt: Date.now() - 1000 * 60 * 60 * 48,
-      answerCount: 1,
-    },
-    answers: [
-      {
-        id: 'a6',
-        questionId: '3',
-        authorId: 'user_2',
-        authorName: 'Sam Rivera',
-        authorImageUrl: null,
-        content: 'Morning walks without my phone. Even just 15 minutes sets the tone for the whole day.',
-        createdAt: Date.now() - 1000 * 60 * 60 * 40,
-      },
-    ],
-  },
-  '4': {
-    question: {
-      id: '4',
-      authorId: 'user_4',
-      authorName: 'Taylor Kim',
-      authorImageUrl: null,
-      content: "What's something you're proud of that most people don't know about?",
-      createdAt: Date.now() - 1000 * 60 * 60 * 72,
-      answerCount: 0,
-    },
-    answers: [],
-  },
-};
-
-function getMockDetail(id: string): QuestionDetail {
-  return (
-    MOCK_DETAIL_MAP[id] ?? {
-      question: {
-        id,
-        authorId: 'user_1',
-        authorName: 'Unknown',
-        authorImageUrl: null,
-        content: 'Question not found.',
-        createdAt: Date.now(),
-        answerCount: 0,
-      },
-      answers: [],
-    }
-  );
-}
-
-function AnswerCard({ answer, colorScheme }: { answer: Answer; colorScheme: 'light' | 'dark' | 'unspecified' }) {
-  const colors = Colors[colorScheme];
-  return (
-    <ThemedView style={styles.answerCard}>
-      <View style={styles.answerHeader}>
-        {answer.authorImageUrl ? (
-          <Image source={{ uri: answer.authorImageUrl }} style={styles.answerAvatar} />
-        ) : (
-          <View style={[styles.answerAvatarPlaceholder, { backgroundColor: colorScheme === 'dark' ? '#2a2f35' : '#eef2f6' }]}>
-            <Ionicons name="person" size={14} color={colors.iconLight} />
-          </View>
-        )}
-        <View style={styles.answerMeta}>
-          <ThemedText style={styles.answerAuthorName}>{answer.authorName}</ThemedText>
-          <ThemedText style={styles.answerTimestamp}>
-            {new Date(answer.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-          </ThemedText>
-        </View>
-      </View>
-      <ThemedText style={styles.answerContent}>{answer.content}</ThemedText>
-    </ThemedView>
-  );
-}
+import { ResponseCard } from '@/components/ui/ResponseCard';
+import type { Question } from '@/contexts/UserContext';
+import { useAppUser } from '@/contexts/UserContext';
+import { ADD_RESPONSE, GET_FRIENDS } from '@/graphql/queries';
+import { useMutation, useLazyQuery } from '@apollo/client/react';
 
 export default function QuestionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useUser();
+  const { appUser: user } = useAppUser();
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
-
-  const [detail, setDetail] = useState<QuestionDetail | null>(null);
+  const [addResponse] = useMutation(ADD_RESPONSE);
+  const [getFriends] = useLazyQuery(GET_FRIENDS);
+  const [detail, setDetail] = useState<Question | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [answerText, setAnswerText] = useState('');
@@ -206,45 +38,70 @@ export default function QuestionDetailScreen() {
   const [isAnswerModalVisible, setIsAnswerModalVisible] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
-  const fetchDetail = useCallback(async () => {
+  const getQuestionDetails = useCallback(async () => {
     try {
       setError(null);
-      // TODO: replace with real API call: await questionsApi.getDetail(id, token)
-      await new Promise((resolve) => setTimeout(resolve, 300));
+     
       if (!id) return;
-      setDetail(getMockDetail(id));
+
+      const question = user?.questions.find((q) => q.id === Number(id));
+      const { data: friendsData } = await getFriends({
+        variables: { id: user?.id ?? 0 },
+      });
+
+      let resolvedQuestion = question ?? null;
+      if (question && friendsData && friendsData.friends) {
+        const responses = question.responses.map((response) => {
+          const friend = friendsData.friends.users.find((f: any) => f.id === response.authorId);
+          const myself = user?.id === response.authorId ? user : null;
+          const friendOrMyself = friend || myself;
+          return {
+            ...response,
+            authorName: friendOrMyself ? friendOrMyself.username : 'Unknown',
+          };
+        });
+        resolvedQuestion = { ...question, responses };
+      }
+
+      setDetail(resolvedQuestion);
     } catch (err) {
       console.error('Failed to fetch question detail:', err);
       setError('Could not load this question.');
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, user, getFriends]);
 
   useEffect(() => {
-    fetchDetail();
-  }, [fetchDetail]);
+    getQuestionDetails();
+  }, [getQuestionDetails]);
 
   const submitAnswer = async () => {
     if (!answerText.trim() || isSubmitting || !id) return;
     try {
+      if (!user) {
+        throw new Error('User not found. Please log in again.');
+      }
       setIsSubmitting(true);
-      // TODO: replace with real API call: await questionsApi.createAnswer(id, answerText.trim(), token)
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      const newAnswer: Answer = {
-        id: String(Date.now()),
-        questionId: id,
-        authorId: 'me',
-        authorName: user?.firstName ? `${user.firstName} ${user.lastName ?? ''}`.trim() : 'You',
-        authorImageUrl: user?.imageUrl ?? null,
-        content: answerText.trim(),
-        createdAt: Date.now(),
-      };
-      setDetail((prev) =>
-        prev
-          ? { ...prev, answers: [...prev.answers, newAnswer] }
-          : prev
-      );
+
+      const { data, error } = await addResponse({
+        variables: {
+          authorId: user.id,
+          questionId: Number(id),
+          body: answerText.trim(),
+        },
+      });
+
+      if (data) {
+        const newAnswer = { ...data.addResponse, authorName: user.username };
+        setDetail((prev) =>
+          prev
+            ? { ...prev, responses: [...prev.responses, newAnswer] }
+            : prev
+        );
+      } else {
+        throw new Error(error?.message || 'Failed to post answer. Please try again.');
+      }
       setAnswerText('');
       setIsAnswerModalVisible(false);
       scrollRef.current?.scrollToEnd({ animated: true });
@@ -271,7 +128,7 @@ export default function QuestionDetailScreen() {
         ) : error ? (
           <View style={styles.centerState}>
             <ThemedText style={styles.errorText}>{error}</ThemedText>
-            <TouchableOpacity onPress={fetchDetail} style={styles.retryButton}>
+            <TouchableOpacity onPress={getQuestionDetails} style={styles.retryButton}>
               <ThemedText style={[styles.retryText, { color: colors.tint }]}>Retry</ThemedText>
             </TouchableOpacity>
           </View>
@@ -290,17 +147,10 @@ export default function QuestionDetailScreen() {
               {/* Question block */}
               <ThemedView style={styles.questionBlock}>
                 <View style={styles.questionAuthorRow}>
-                  {detail.question.authorImageUrl ? (
-                    <Image source={{ uri: detail.question.authorImageUrl }} style={styles.authorAvatar} />
-                  ) : (
-                    <View style={[styles.authorAvatarPlaceholder, { backgroundColor: colorScheme === 'dark' ? '#2a2f35' : '#eef2f6' }]}>
-                      <Ionicons name="person" size={22} color={colors.iconLight} />
-                    </View>
-                  )}
                   <View>
-                    <ThemedText style={styles.questionAuthorName}>{detail.question.authorName}</ThemedText>
+                    <ThemedText style={styles.questionAuthorName}>{detail.authorName}</ThemedText>
                     <ThemedText style={styles.questionTimestamp}>
-                      {new Date(detail.question.createdAt).toLocaleDateString(undefined, {
+                      {new Date(detail.createdAt).toLocaleDateString(undefined, {
                         weekday: 'short',
                         month: 'short',
                         day: 'numeric',
@@ -308,10 +158,10 @@ export default function QuestionDetailScreen() {
                     </ThemedText>
                   </View>
                 </View>
-                <ThemedText style={styles.questionContent}>{detail.question.content}</ThemedText>
+                <ThemedText style={styles.questionContent}>{detail.body}</ThemedText>
                 <ThemedView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
                     <ThemedText style={styles.answerCountLabel}>
-                      {detail.answers.length} {detail.answers.length === 1 ? 'Answer' : 'Answers'}
+                      {detail.responses.length} {detail.responses.length === 1 ? 'Answer' : 'Answers'}
                     </ThemedText>
                     <TouchableOpacity
                         onPress={() => setIsAnswerModalVisible(true)}
@@ -323,14 +173,14 @@ export default function QuestionDetailScreen() {
               </ThemedView>
 
               {/* Answers list */}
-              {detail.answers.length === 0 ? (
+              {detail.responses.length === 0 ? (
                 <View style={styles.emptyAnswers}>
                   <Ionicons name="chatbubble-ellipses-outline" size={36} color={colors.iconLight} />
                   <ThemedText style={styles.emptyText}>No answers yet. Be the first!</ThemedText>
                 </View>
               ) : (
-                detail.answers.map((answer) => (
-                  <AnswerCard key={answer.id} answer={answer} colorScheme={colorScheme} />
+                detail.responses.map((answer) => (
+                  <ResponseCard key={answer.id} response={answer} colorScheme={colorScheme} />
                 ))
               )}
             </ScrollView>
@@ -364,7 +214,7 @@ export default function QuestionDetailScreen() {
               </View>
               {detail && (
                 <ThemedText style={styles.modalQuestion} numberOfLines={2}>
-                  {detail.question.content}
+                  {detail.body}
                 </ThemedText>
               )}
               <TextInput
@@ -482,50 +332,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-  },
-  answerCard: {
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-    gap: 8,
-  },
-  answerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  answerAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f3f4f6',
-  },
-  answerAvatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  answerMeta: {
-    flex: 1,
-  },
-  answerAuthorName: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  answerTimestamp: {
-    fontSize: 11,
-    color: '#95a5a6',
-  },
-  answerContent: {
-    fontSize: 15,
-    lineHeight: 22,
   },
   emptyAnswers: {
     alignItems: 'center',

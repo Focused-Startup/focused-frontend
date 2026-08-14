@@ -6,7 +6,7 @@ import { CREATE_USER, GET_USER, UPDATE_USER } from '@/graphql/queries';
 export type GoalStatus = 'active' | 'completed' | 'deleted' | 'inactive';
 export type Note = { id: number; content: string; createdAt: Date; updatedAt: Date; authorId?: number };
 export type Goal = { id: number; content: string; status: GoalStatus; createdAt: Date; dueDate?: Date; updatedAt: Date; userId?: number };
-export type Response = { id: string; authorId: string; questionId: string; body: string; createdAt: Date; updatedAt: Date };
+export type Response = { id: number; authorId: number; authorName: string; questionId: number; body: string; createdAt: Date; updatedAt: Date };
 export type Question = {
   id: number;
   authorId: number;
@@ -69,7 +69,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
         if (!user) {
           // First sign-in: no backend user exists yet, so create one.
-          const { data: createdUserData, error: createError } = await createUser({
+          const { error: createError } = await createUser({
             variables: {
               email: primaryEmail,
               username: clerkUser.username ?? '',
