@@ -279,6 +279,7 @@ export default function HomeScreen() {
   const dotsButton = (
     <TouchableOpacity onPress={toggleToolbar} style={styles.dotsButton}>
       <Ionicons name="ellipsis-vertical" size={20} color="#1f2937" />
+
     </TouchableOpacity>
   );
 
@@ -395,6 +396,7 @@ export default function HomeScreen() {
 
             <View style={styles.section}>
               <ThemedText style={styles.sectionLabel}>Thickness</ThemedText>
+              <View>
               <View style={styles.sizeRow}>
                 {STROKE_SIZES.map((size) => (
                   <TouchableOpacity
@@ -410,6 +412,13 @@ export default function HomeScreen() {
                     />
                   </TouchableOpacity>
                 ))}
+              </View>
+              <TouchableOpacity onPress={() => {}}>
+                <ThemedText>
+                  Friends
+                </ThemedText>
+                <Ionicons name="arrow-forward-circle" size={20} color="#1f2937" />
+              </TouchableOpacity>
               </View>
             </View>
           </View>
