@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import { Animated, Dimensions, PanResponder, StyleSheet, TouchableOpacity, View, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -377,7 +378,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.section}>
+            <View>
               <ThemedText style={styles.sectionLabel}>Colors</ThemedText>
               <View style={styles.colorRow}>
                 {DRAW_COLORS.map((color) => (
@@ -395,32 +396,32 @@ export default function HomeScreen() {
             </View>
 
             <View style={styles.section}>
-              <ThemedText style={styles.sectionLabel}>Thickness</ThemedText>
-              <View>
-              <View style={styles.sizeRow}>
-                {STROKE_SIZES.map((size) => (
-                  <TouchableOpacity
-                    key={size}
-                    onPress={() => setSelectedSize(size)}
-                    style={[styles.sizeButton, selectedSize === size && styles.selectedSizeButton]}
-                  >
-                    <View
-                      style={[
-                        styles.sizePreview,
-                        { width: size * 2, height: size * 2, borderRadius: size, backgroundColor: selectedColor },
-                      ]}
-                    />
-                  </TouchableOpacity>
-                ))}
+              <View style={{ flexDirection: 'column' }}>
+                <ThemedText style={styles.sectionLabel}>Thickness</ThemedText>
+                <View style={styles.sizeRow}>
+                  {STROKE_SIZES.map((size) => (
+                    <TouchableOpacity
+                      key={size}
+                      onPress={() => setSelectedSize(size)}
+                      style={[styles.sizeButton, selectedSize === size && styles.selectedSizeButton]}
+                    >
+                      <View
+                        style={[
+                          styles.sizePreview,
+                          { width: size * 2, height: size * 2, borderRadius: size, backgroundColor: selectedColor },
+                        ]}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-              <TouchableOpacity onPress={() => {}}>
-                <ThemedText>
+              <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }} onPress={() => router.push('/(tabs)/home/friends')}>
+                <ThemedText style={styles.sectionLabel}>
                   Friends
                 </ThemedText>
-                <Ionicons name="arrow-forward-circle" size={20} color="#1f2937" />
+                <Ionicons name="arrow-forward-circle" size={20} color="#1f2937" style={{ marginBottom: 1 }} />
               </TouchableOpacity>
               </View>
-            </View>
           </View>
         </Animated.View>
       </SafeAreaView>
@@ -518,6 +519,8 @@ const styles = StyleSheet.create({
   },
   section: {
     gap: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   sectionLabel: {
     fontSize: 13,

@@ -40,7 +40,7 @@ export default function LoginScreen() {
 
       if (signIn.status === 'complete') {
         await signIn.finalize();
-        router.replace('/(tabs)');
+        router.replace('./(tabs)/home');
         return;
       }
 
