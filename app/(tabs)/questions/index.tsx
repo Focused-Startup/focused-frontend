@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -35,6 +36,7 @@ export default function QuestionsScreen() {
   const [isPostModalVisible, setIsPostModalVisible] = useState(false);
   const [newQuestion, setNewQuestion] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
@@ -46,6 +48,15 @@ export default function QuestionsScreen() {
     }
     setIsLoading(false);
   }, [appUser]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    try {
+      refetchUser();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const postQuestion = async () => {
     if (!newQuestion.trim() || isSubmitting) return;
@@ -92,6 +103,7 @@ export default function QuestionsScreen() {
           onScroll={handleScroll}
           scrollEventThrottle={scrollEventThrottle}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.tint} />}
         >
           <View style={styles.content}>
             {isLoading ? (
@@ -188,10 +200,10 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
+    marginTop: 60,
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 100,
     paddingBottom: 100,
   },
   loader: {
