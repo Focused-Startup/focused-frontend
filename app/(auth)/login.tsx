@@ -40,7 +40,7 @@ export default function LoginScreen() {
 
       if (signIn.status === 'complete') {
         await signIn.finalize();
-        router.replace('./(tabs)/home');
+        router.replace('/(tabs)/home');
         return;
       }
 
@@ -83,7 +83,7 @@ export default function LoginScreen() {
       />
 
       <View style={styles.linksRow}>
-        <Link href="./forgot-password" asChild>
+        <Link href="/forgot-password" asChild>
           <Pressable>
             <ThemedText type="link">Forgot password?</ThemedText>
           </Pressable>
@@ -92,7 +92,7 @@ export default function LoginScreen() {
 
       <View style={styles.footerRow}>
         <ThemedText>Don&apos;t have an account? </ThemedText>
-        <Link href="./sign-up" asChild>
+        <Link href="/sign-up" asChild>
           <Pressable>
             <ThemedText type="link">Sign up</ThemedText>
           </Pressable>

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Link, router, useLocalSearchParams } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { useSignIn } from '@clerk/expo';
 
 import { AuthScreenShell } from '@/components/AuthScreenShell';

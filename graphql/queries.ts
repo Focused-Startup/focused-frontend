@@ -1,6 +1,66 @@
 import { gql } from '@apollo/client';
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import type { AppUser, GoalStatus, Note, Response } from '@/contexts/UserContext';
+import type { CanvasData, CanvasVisibility } from '@/utils/canvas';
+
+export type Canvas = {
+  id: number;
+  ownerId: number;
+  visibility: CanvasVisibility;
+  drawingData: unknown;
+  updatedAt: string;
+  canvasUsers: { userId: number }[];
+};
+export const GET_CANVAS: TypedDocumentNode<{ canvas: Canvas | null }, { ownerId: number }> = gql`
+  query GetCanvas($ownerId: Int!) {
+    canvas(ownerId: $ownerId) {
+      id
+      ownerId
+      visibility
+      drawingData
+      updatedAt
+      canvasUsers { userId }
+    }
+  }
+`;
+
+type CanvasRevision = { id: number; drawingData: unknown; updatedAt: string };
+export const CANVAS_UPDATED: TypedDocumentNode<
+  { canvasUpdated: CanvasRevision | null },
+  { canvasId: number }
+> = gql`
+  subscription CanvasUpdated($canvasId: Int!) {
+    canvasUpdated(canvasId: $canvasId) {
+      id
+      drawingData
+      updatedAt
+    }
+  }
+`;
+
+export const SAVE_CANVAS: TypedDocumentNode<
+  { saveCanvas: { applied: boolean; canvas: CanvasRevision } },
+  { id: number; expectedUpdatedAt: string; drawingData: CanvasData }
+> = gql`
+  mutation SaveCanvas($id: Int!, $expectedUpdatedAt: String!, $drawingData: JSON!) {
+    saveCanvas(id: $id, expectedUpdatedAt: $expectedUpdatedAt, drawingData: $drawingData) {
+      applied
+      canvas { id drawingData updatedAt }
+    }
+  }
+`;
+
+export const ENSURE_CANVAS: TypedDocumentNode<
+  { ensureCanvas: { id: number; ownerId: number } },
+  { ownerId: number }
+> = gql`
+  mutation EnsureCanvas($ownerId: Int!) {
+    ensureCanvas(ownerId: $ownerId) {
+      id
+      ownerId
+    }
+  }
+`;
 
 type CreateUserData = { regUser: Pick<AppUser, 'email' | 'firstName' | 'lastName' | 'createdAt'> };
 type CreateUserVars = { username: string; email: string };

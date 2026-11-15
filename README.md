@@ -23,6 +23,16 @@ Users can add wellness-oriented goals from a suggested list and keep track of ac
 
 The journaling section supports creating and editing longer-form reflections so users can build a consistent mental health routine.
 
+### Friend canvases
+
+`components/Canvas.tsx` accepts a numeric `friendId` and loads the first canvas returned for that owner. It displays version 1 drawing data (`canvasSize` and `strokes`) and provides an explicit Save action for edits. Signed-in users can edit `friends` or `public` canvases, or a `private` canvas when their user ID is in `canvasUsers`; otherwise the canvas is read-only.
+
+On sign-in, the app requests a canvas for the signed-in user. The backend preserves an existing canvas or creates a private, empty version 1 canvas. If setup fails, the home screen offers a retry.
+
+The home canvas subscribes to live updates and automatically saves drawing, erase, undo, and clear changes. A version conflict pauses saving and keeps local edits in memory; the user can explicitly discard them and reload the remote canvas. Set `EXPO_PUBLIC_FOCUSED_BACKEND_WS_URL` to the backend GraphQL WebSocket URL. The updated backend must be deployed before this frontend.
+
+These are frontend controls only. The current backend canvas queries and mutations do not enforce authorization, so they must not be relied on to protect private data or prevent unauthorized edits.
+
 ## Tech stack
 
 - Expo

@@ -4,7 +4,9 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import {
 	ActivityIndicator,
+	KeyboardAvoidingView,
 	Modal,
+	Platform,
 	RefreshControl,
 	ScrollView,
 	StyleSheet,
@@ -130,37 +132,40 @@ export default function FriendsScreen() {
 				animationType="slide"
 				onRequestClose={() => setIsAddModalVisible(false)}
 			>
-				<View style={styles.modalBackdrop}>
-					<View style={[styles.modalCard, { backgroundColor: colors.background }]}>
-						<View style={styles.modalHeader}>
-							<ThemedText type="subtitle">Add a friend</ThemedText>
-							<TouchableOpacity onPress={() => setIsAddModalVisible(false)} accessibilityLabel="Close">
-								<Ionicons name="close" size={24} color={colors.icon} />
+				<KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalContainer}>
+					<View style={styles.modalBackdrop}>
+						<View style={[styles.modalCard, { backgroundColor: colors.background }]}>
+							<View style={styles.modalHeader}>
+								<ThemedText type="subtitle">Add a friend</ThemedText>
+								<TouchableOpacity onPress={() => setIsAddModalVisible(false)} accessibilityLabel="Close">
+									<Ionicons name="close" size={24} color={colors.icon} />
+								</TouchableOpacity>
+							</View>
+							<TextInput
+								value={username}
+								onChangeText={setUsername}
+								placeholder="Friend's username"
+								placeholderTextColor={colors.iconLight}
+								autoCapitalize="none"
+								style={[styles.input, { color: colors.text, borderColor: colors.iconLight }]}
+							/>
+							<TouchableOpacity
+								style={[styles.addButton, { backgroundColor: colors.tint }, !username.trim() && styles.disabledButton]}
+								disabled={!username.trim()}
+								onPress={() => setIsAddModalVisible(false)}
+							>
+								<ThemedText style={styles.addButtonText}>Send request</ThemedText>
 							</TouchableOpacity>
 						</View>
-						<TextInput
-							value={username}
-							onChangeText={setUsername}
-							placeholder="Friend's username"
-							placeholderTextColor={colors.iconLight}
-							autoCapitalize="none"
-							style={[styles.input, { color: colors.text, borderColor: colors.iconLight }]}
-						/>
-						<TouchableOpacity
-							style={[styles.addButton, { backgroundColor: colors.tint }, !username.trim() && styles.disabledButton]}
-							disabled={!username.trim()}
-							onPress={() => setIsAddModalVisible(false)}
-						>
-							<ThemedText style={styles.addButtonText}>Send request</ThemedText>
-						</TouchableOpacity>
-					</View>
 				</View>
+				</KeyboardAvoidingView>
 			</Modal>
 		</SafeAreaView>
 	);
 }
 
 const styles = StyleSheet.create({
+	modalContainer: { flex: 1 },
 	container: { flex: 1 },
 	content: { paddingHorizontal: 20, paddingTop: 100, paddingBottom: 40 },
 	intro: { marginBottom: 20, color: '#687076' },

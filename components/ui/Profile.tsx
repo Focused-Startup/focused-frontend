@@ -320,7 +320,9 @@ export default function ProfileScreen({
                       ) : (
                         <ThemedText>{feeling ?? '—'}</ThemedText>
                       )}
-                      <Ionicons name="pencil-outline" size={16} color="#007AFF" onPress={() => setIsEditing(!isEditing)} />
+                      {friendId === undefined && (
+                        <Ionicons name="pencil-outline" size={16} color="#007AFF" onPress={() => setIsEditing(!isEditing)} />
+                      )}
                     </ThemedView>
                   </ThemedView>
                   </ThemedView>
@@ -367,10 +369,10 @@ export default function ProfileScreen({
                     <ThemedText style={styles.emptyText}>No notes yet. Tap + to add one.</ThemedText>
                   )}
 
-                  {notesData.map((note) => {
+                  {notesData.map((note, index) => {
                     if (friendId) {
                       return (
-                        <ThemedView style={styles.item}>
+                        <ThemedView style={styles.item} key={index}>
                           <ThemedText style={styles.noteContent}>{note.content}</ThemedText>
                           <ThemedText style={styles.noteDate}>
                             {new Date(note.createdAt).toLocaleDateString(undefined, {
@@ -410,10 +412,10 @@ export default function ProfileScreen({
                   {activeGoals.length === 0 && !friendId ? (
                     <ThemedText style={styles.emptyText}>No active goals. Pick one below!</ThemedText>
                   ) : (
-                    activeGoals.map((goal) => {
+                    activeGoals.map((goal, index) => {
                       if (friendId) {
                         return (
-                          <ThemedView style={styles.goalCard}>
+                          <ThemedView style={styles.goalCard} key={index}>
                             <Ionicons
                               name={completedGoalIds.includes(goal.id) ? 'checkmark-circle' : 'ellipse-outline'}
                               size={24}

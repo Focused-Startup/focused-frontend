@@ -1,7 +1,7 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
 import { useAuth, useUser } from '@clerk/expo';
 import { useLazyQuery, useMutation } from '@apollo/client/react';
-import { CREATE_USER, GET_USER, UPDATE_USER } from '@/graphql/queries';
+import { CREATE_USER, ENSURE_CANVAS, GET_USER, UPDATE_USER } from '@/graphql/queries';
 
 export type GoalStatus = 'active' | 'completed' | 'deleted' | 'inactive';
 export type Note = { id: number; content: string; createdAt: Date; updatedAt: Date; authorId?: number };
@@ -37,6 +37,9 @@ interface UserContextValue {
   appUser: AppUser | null;
   loading: boolean;
   errorMessage: string | null;
+  canvasError: string | null;
+  canvasReady: boolean;
+  retryCanvas: () => void;
   refetchUser: () => void;
 }
 
@@ -44,6 +47,9 @@ const UserContext = createContext<UserContextValue>({
   appUser: null,
   loading: false,
   errorMessage: null,
+  canvasError: null,
+  canvasReady: false,
+  retryCanvas: () => {},
   refetchUser: () => {}
 });
 
@@ -52,18 +58,55 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const { user: clerkUser } = useUser();
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [canvasError, setCanvasError] = useState<string | null>(null);
+  const [canvasReady, setCanvasReady] = useState(false);
+  const canvasRequestRef = useRef(0);
+  const syncedClerkUserIdRef = useRef<string | null>(null);
 
-  const [fetchUser, { loading, refetch }] = useLazyQuery(GET_USER);
+  const [fetchUser, { loading, refetch }] = useLazyQuery(GET_USER, { fetchPolicy: 'network-only' });
   const [createUser] = useMutation(CREATE_USER);
   const [updateUser] = useMutation(UPDATE_USER);
+  const [ensureCanvas] = useMutation(ENSURE_CANVAS);
   const primaryEmail = clerkUser?.primaryEmailAddress?.emailAddress;
   const firstName = clerkUser?.firstName;
   const lastName = clerkUser?.lastName;
 
-  const updateAndFetchData = async () => {
+  const ensureUserCanvas = async (ownerId: number) => {
+    const requestId = ++canvasRequestRef.current;
+    try {
+      const { data } = await ensureCanvas({ variables: { ownerId } });
+      if (!data?.ensureCanvas) throw new Error('Canvas provisioning returned no canvas.');
+      if (requestId === canvasRequestRef.current) {
+        setCanvasError(null);
+        setCanvasReady(true);
+      }
+    } catch (error) {
+      console.error('Failed to provision canvas:', error);
+      if (requestId === canvasRequestRef.current) {
+        setCanvasReady(false);
+        setCanvasError('Could not set up your canvas.');
+      }
+    }
+  };
+
+  const retryCanvas = () => {
+    if (appUser) void ensureUserCanvas(appUser.id);
+  };
+
+  const updateAndFetchData = async (isCurrent: () => boolean) => {
     try {
       if (isSignedIn && clerkUser && primaryEmail) {
-        const { data } = await fetchUser({ variables: { email: appUser?.email || primaryEmail } });
+        const sameAccount = syncedClerkUserIdRef.current === clerkUser.id;
+        if (!sameAccount) {
+          setAppUser(null);
+          setCanvasError(null);
+          setCanvasReady(false);
+          syncedClerkUserIdRef.current = null;
+        }
+        const email = sameAccount ? appUser?.email || primaryEmail : primaryEmail;
+        const { data, error: fetchError } = await fetchUser({ variables: { email } });
+        if (!isCurrent()) return;
+        if (fetchError) throw fetchError;
 
         let user = data?.user ?? null;
 
@@ -75,6 +118,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
               username: clerkUser.username ?? '',
             },
           });
+          if (!isCurrent()) return;
           if (createError) {
             setErrorMessage(createError.message ?? 'Failed to create user.');
             return;
@@ -82,6 +126,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
           const { data: refetchedData, error: refetchError } = await fetchUser({
             variables: { email: primaryEmail },
           });
+          if (!isCurrent()) return;
           if (refetchError) {
             setErrorMessage(refetchError.message ?? 'Failed to load user.');
             return;
@@ -97,21 +142,28 @@ export function UserProvider({ children }: { children: ReactNode }) {
               username: clerkUser.username ?? '',
             },
           });
+          if (!isCurrent()) return;
         }
 
         if (user) {
           console.log('Fetched user data:', user);
+          syncedClerkUserIdRef.current = clerkUser.id;
           setAppUser(user);
           setErrorMessage(null);
+          await ensureUserCanvas(user.id);
         } else {
           setErrorMessage('User not found.');
         }
       } else if (!isSignedIn) {
+        canvasRequestRef.current += 1;
+        syncedClerkUserIdRef.current = null;
         setAppUser(null);
         setErrorMessage(null);
+        setCanvasError(null);
+        setCanvasReady(false);
       }
     } catch (error: any) {
-      setErrorMessage(error.message ?? 'Failed to load user.');
+      if (isCurrent()) setErrorMessage(error.message ?? 'Failed to load user.');
     }
   };
   
@@ -127,7 +179,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    updateAndFetchData();
+    let active = true;
+    void updateAndFetchData(() => active);
+    return () => {
+      active = false;
+      canvasRequestRef.current += 1;
+    };
   }, [isSignedIn, clerkUser]);
 
   // Periodically sync with the backend so drift from local-only updates
@@ -148,6 +205,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
         appUser,
         loading,
         errorMessage,
+        canvasError,
+        canvasReady,
+        retryCanvas,
         refetchUser
       }}
     >
