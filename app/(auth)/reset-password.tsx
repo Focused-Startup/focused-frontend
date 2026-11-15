@@ -46,7 +46,7 @@ export default function ResetPasswordScreen() {
 
       if (signIn.status === 'complete') {
         await signIn.finalize();
-        router.replace('/(tabs)');
+        router.replace('./(tabs)');
         return;
       }
 

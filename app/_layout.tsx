@@ -68,7 +68,7 @@ function AppNavigation() {
 
     if (isSignedIn && isAuthRoute) {
       if (segments.includes('verify-email')) return;
-      router.replace('/(tabs)');
+      router.replace('./(tabs)/home');
     }
   }, [isLoaded, isSignedIn, isAuthRoute, router, segments]);
 

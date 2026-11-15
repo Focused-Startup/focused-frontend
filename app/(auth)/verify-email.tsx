@@ -54,7 +54,7 @@ export default function VerifyEmailScreen() {
             email: email.trim(),  
           },
         });
-        router.replace('/(tabs)');
+        router.replace('./(tabs)');
         return;
       }
 
